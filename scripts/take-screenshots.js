@@ -16,24 +16,42 @@ const path = require('path');
         fs.mkdirSync(screenshotDir);
     }
 
+    const maskIPs = async (page) => {
+        await page.evaluate(() => {
+            const replaceIP = (text) => text.replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, '192.168.x.xxx');
+
+            // Dashboard Cards
+            document.querySelectorAll('.font-mono').forEach(el => {
+                if (/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(el.innerText)) {
+                    el.innerText = replaceIP(el.innerText);
+                    el.style.filter = 'blur(1px)'; // Add subtle blur for effect
+                }
+            });
+
+            // Admin Table
+            document.querySelectorAll('td.font-mono').forEach(el => {
+                if (/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(el.innerText)) {
+                    el.innerText = replaceIP(el.innerText);
+                    el.style.filter = 'blur(1px)';
+                }
+            });
+        });
+    };
+
     try {
         console.log('Taking Dashboard screenshot...');
         await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
-        // Wait for some data to load or skeleton to disappear if possible, though networkidle0 should handle it.
         await new Promise(r => setTimeout(r, 2000));
+        await maskIPs(page);
         await page.screenshot({ path: path.join(screenshotDir, 'dashboard.png') });
 
         console.log('Taking Admin screenshot...');
-        // Set cookie for simple auth (based on observed code)
-        // Note: The actual auth implementation might check value, but usually just presence or specific value "true" or token. 
-        // Let's assume standard 'admin_auth' cookie based on previous file views.
-        // Actually, looking at previous turn, login sets a cookie. I'll check if I need to POST to login first.
-        // To be safe, I'll just try to login via UI interaction.
         await page.goto('http://localhost:3000/admin/login', { waitUntil: 'networkidle0' });
         await page.type('input[type="password"]', 'admin');
         await page.click('button[type="submit"]');
         await page.waitForNavigation({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 2000));
+        await maskIPs(page);
         await page.screenshot({ path: path.join(screenshotDir, 'admin.png') });
 
         console.log('Taking History screenshot...');
