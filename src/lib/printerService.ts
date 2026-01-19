@@ -89,12 +89,22 @@ export function getReplacementHistory(printerId: number) {
     return db.prepare('SELECT * FROM supplies_history WHERE printer_id = ? ORDER BY recorded_at DESC').all(printerId);
 }
 
-export function addReplacementHistory(printerId: number, color: string, level: number, maxCapacity: number, source: 'auto' | 'manual' = 'manual') {
+export function reorderPrinters(orderedIds: number[]) {
+    const update = db.prepare('UPDATE printers SET display_order = ? WHERE id = ?');
+    const updateMany = db.transaction((ids: number[]) => {
+        for (let i = 0; i < ids.length; i++) {
+            update.run(i, ids[i]);
+        }
+    });
+    updateMany(orderedIds);
+}
+
+export function addReplacementHistory(printerId: number, color: string, remark: string = '', level: number = 100, maxCapacity: number = 100, source: 'auto' | 'manual' = 'manual') {
     const stmt = db.prepare(`
-        INSERT INTO supplies_history (printer_id, color, level, max_capacity, source)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO supplies_history (printer_id, color, level, max_capacity, source, remark)
+        VALUES (?, ?, ?, ?, ?, ?)
     `);
-    return stmt.run(printerId, color, level, maxCapacity, source);
+    return stmt.run(printerId, color, level, maxCapacity, source, remark);
 }
 
 export function deleteReplacementHistory(id: number) {
@@ -119,34 +129,49 @@ export async function refreshAllPrinters() {
             `).run(p.id, data.status, data.isOnline ? 1 : 0);
 
             if (data.isOnline && data.supplies.length > 0) {
-                // Clear old supplies first
+                // 1. Fetch current (old) state into a Map for comparison
+                const currentSupplies = new Map<string, { level: number, max: number }>();
+                const existing = db.prepare('SELECT color, level, max_capacity FROM supplies_current WHERE printer_id = ?').all(p.id) as { color: string, level: number, max_capacity: number }[];
+                for (const s of existing) {
+                    currentSupplies.set(s.color, { level: s.level, max: s.max_capacity });
+                }
+
+                // 2. Clear old supplies
                 db.prepare('DELETE FROM supplies_current WHERE printer_id = ?').run(p.id);
 
                 const updateSupply = db.prepare(`
                     INSERT INTO supplies_current (printer_id, color, level, max_capacity)
                     VALUES (?, ?, ?, ?)
                 `);
+
+                // 3. Prepare insert for history (auto)
+                // Note: 'remark' is optional, defaulting to null/empty in DB schema or previous migration
                 const insertHistory = db.prepare(`
-                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, source)
-                    VALUES (?, ?, ?, ?, 'auto')
+                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, source, remark)
+                    VALUES (?, ?, ?, ?, 'auto', '系统自动检测')
                 `);
-                const getCurrentSupply = db.prepare(`SELECT level, max_capacity FROM supplies_current WHERE printer_id = ? AND color = ?`);
 
                 const tx = db.transaction(() => {
                     for (const supply of data.supplies) {
-                        const current = getCurrentSupply.get(p.id, supply.color) as { level: number, max_capacity: number } | undefined;
+                        // Compare against old state
+                        const old = currentSupplies.get(supply.color);
 
-                        if (current) {
-                            const currentPercent = current.max_capacity > 0 ? (current.level / current.max_capacity) * 100 : 0;
+                        if (old) {
+                            const oldPercent = old.max > 0 ? (old.level / old.max) * 100 : 0;
                             const newPercent = supply.max > 0 ? (supply.level / supply.max) * 100 : 0;
-                            const percentJump = newPercent - currentPercent;
+                            const percentJump = newPercent - oldPercent;
 
-                            if (percentJump > 40 && currentPercent < 100 && currentPercent > 0 && newPercent >= 80) {
-                                console.log(`[Replacement Detected] ${p.name} - ${supply.color}: ${currentPercent.toFixed(1)}% -> ${newPercent.toFixed(1)}%`);
+                            // Thresholds:
+                            // 1. Jump > 40% (significant increase)
+                            // 2. New level >= 90% (almost full)
+                            // 3. Old level < 100% (wasn't already full)
+                            if (percentJump > 40 && newPercent >= 90 && oldPercent < 100) {
+                                console.log(`[Replacement Detected] ${p.name} - ${supply.color}: ${oldPercent.toFixed(1)}% -> ${newPercent.toFixed(1)}%`);
                                 insertHistory.run(p.id, supply.color, supply.level, supply.max);
                             }
                         }
 
+                        // Always update current table
                         updateSupply.run(p.id, supply.color, supply.level, supply.max);
                     }
                 });

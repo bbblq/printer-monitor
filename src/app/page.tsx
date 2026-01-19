@@ -131,7 +131,14 @@ export default function Dashboard() {
 
             {/* Footer */}
             <footer className="max-w-[1600px] mx-auto px-8 pb-8 text-center">
-                <p className="text-sm text-slate-400 font-medium">&copy; 2026 {settings.system_title} by bbblq</p>
+                <a
+                    href="https://github.com/bbblq/printer-monitor"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                >
+                    &copy; 2026 {settings.system_title} by bbblq
+                </a>
             </footer>
 
             {/* History Modal */}
@@ -139,6 +146,7 @@ export default function Dashboard() {
                 <HistoryModal
                     printer={selectedPrinter}
                     onClose={() => setSelectedPrinter(null)}
+                    readOnly={true}
                 />
             )}
         </div>

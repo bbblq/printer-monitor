@@ -69,6 +69,14 @@ try {
   // Column already exists, ignore
 }
 
+// Migration: Add remark column to supplies_history if it doesn't exist
+try {
+  db.prepare('ALTER TABLE supplies_history ADD COLUMN remark TEXT').run();
+  console.log('[DB] Added remark column to supplies_history table');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Initial settings seed
 const seedSettings = (key: string, value: string) => {
   const exists = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(key);

@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-xs">
                             <tr>
-                                <th className="px-6 py-4">排序</th>
+                                <th className="px-6 py-4 w-12">排序</th>
                                 <th className="px-6 py-4">状态</th>
                                 <th className="px-6 py-4">位置</th>
                                 <th className="px-6 py-4">品牌</th>
@@ -195,25 +195,52 @@ export default function AdminDashboard() {
                             {loading ? (
                                 <tr><td colSpan={8} className="p-8 text-center text-slate-400">正在加载...</td></tr>
                             ) : printers.map((p, index) => (
-                                <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={() => handleMoveUp(index)}
-                                                disabled={index === 0}
-                                                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                                title="上移"
-                                            >
-                                                <ArrowUp size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleMoveDown(index)}
-                                                disabled={index === printers.length - 1}
-                                                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                                title="下移"
-                                            >
-                                                <ArrowDown size={14} />
-                                            </button>
+                                <tr
+                                    key={p.id}
+                                    draggable
+                                    onDragStart={(e) => {
+                                        // e.dataTransfer.setData('text/plain', index.toString());
+                                        // Store index in a simpler way or state if component structure allowed, 
+                                        // but dataTransfer is standard.
+                                        (e.target as HTMLTableRowElement).classList.add('opacity-50');
+                                        (window as any).__dragIndex = index; // Simple hack for accessible index in same window
+                                    }}
+                                    onDragEnd={(e) => {
+                                        (e.target as HTMLTableRowElement).classList.remove('opacity-50');
+                                        delete (window as any).__dragIndex;
+                                    }}
+                                    onDragOver={(e) => {
+                                        e.preventDefault(); // Allow dropping
+                                        const dragIndex = (window as any).__dragIndex;
+                                        if (typeof dragIndex === 'number' && dragIndex !== index) {
+                                            // Perform swap
+                                            const newPrinters = [...printers];
+                                            const [moved] = newPrinters.splice(dragIndex, 1);
+                                            newPrinters.splice(index, 0, moved);
+                                            setPrinters(newPrinters); // Optimistic update
+                                            (window as any).__dragIndex = index; // Update index
+                                        }
+                                    }}
+                                    onDrop={async (e) => {
+                                        e.preventDefault();
+                                        // Save order to server
+                                        const ids = printers.map(p => p.id);
+                                        try {
+                                            await fetch('/api/printers/reorder', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ orderedIds: ids })
+                                            });
+                                        } catch (err) {
+                                            console.error('Failed to save order', err);
+                                            fetchPrinters(); // Revert on error
+                                        }
+                                    }}
+                                    className="hover:bg-slate-50/80 transition-colors group cursor-move"
+                                >
+                                    <td className="px-6 py-4 text-slate-400 cursor-grab active:cursor-grabbing">
+                                        <div className="flex items-center justify-center bg-slate-100 rounded p-1 w-8 hover:bg-slate-200">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></svg>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
