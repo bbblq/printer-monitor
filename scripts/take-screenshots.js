@@ -30,11 +30,26 @@ const path = require('path');
         // Actually, looking at previous turn, login sets a cookie. I'll check if I need to POST to login first.
         // To be safe, I'll just try to login via UI interaction.
         await page.goto('http://localhost:3000/admin/login', { waitUntil: 'networkidle0' });
-        await page.type('input[type="password"]', 'admin'); // Default password
+        await page.type('input[type="password"]', 'admin');
         await page.click('button[type="submit"]');
         await page.waitForNavigation({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 2000));
         await page.screenshot({ path: path.join(screenshotDir, 'admin.png') });
+
+        console.log('Taking History screenshot...');
+        await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
+        // Click the first history button (using title attribute selector)
+        const historyBtnSelector = 'button[title="查看更换记录"]';
+        await page.waitForSelector(historyBtnSelector, { timeout: 5000 }).catch(() => console.log('No printers found for history screenshot'));
+
+        if (await page.$(historyBtnSelector)) {
+            await page.click(historyBtnSelector);
+            // Wait for modal to appear (it has a transparent backdrop)
+            await new Promise(r => setTimeout(r, 1000));
+            // Screenshot specifically the modal if possible, or just the whole page with modal open
+            // Let's grab the whole page for context
+            await page.screenshot({ path: path.join(screenshotDir, 'history.png') });
+        }
 
     } catch (error) {
         console.error('Error taking screenshots:', error);
