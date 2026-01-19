@@ -18,21 +18,27 @@ const path = require('path');
 
     const maskIPs = async (page) => {
         await page.evaluate(() => {
-            const replaceIP = (text) => text.replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, '192.168.x.xxx');
+            const ipRegex = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g;
+            const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
 
-            // Dashboard Cards
-            document.querySelectorAll('.font-mono').forEach(el => {
-                if (/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(el.innerText)) {
-                    el.innerText = replaceIP(el.innerText);
-                    el.style.filter = 'blur(1px)'; // Add subtle blur for effect
-                }
-            });
+            let node;
+            const nodes = [];
+            while (node = walker.nextNode()) {
+                nodes.push(node);
+            }
 
-            // Admin Table
-            document.querySelectorAll('td.font-mono').forEach(el => {
-                if (/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(el.innerText)) {
-                    el.innerText = replaceIP(el.innerText);
-                    el.style.filter = 'blur(1px)';
+            nodes.forEach(n => {
+                if (ipRegex.test(n.nodeValue)) {
+                    n.nodeValue = n.nodeValue.replace(ipRegex, '192.168.x.xxx');
+                    // Optional: Try to blur the parent element for visual effect
+                    if (n.parentElement) {
+                        n.parentElement.style.filter = 'blur(1px)';
+                    }
                 }
             });
         });

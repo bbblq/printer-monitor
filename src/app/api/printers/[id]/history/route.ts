@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             if (!color || level == null || maxCapacity == null) {
                 return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
             }
-            addReplacementHistory(printerId, color, level, maxCapacity, 'manual');
+            addReplacementHistory(printerId, color, '', level, maxCapacity, 'manual');
             return NextResponse.json({ success: true });
         } else if (action === 'delete' && historyId) {
             deleteReplacementHistory(historyId);
