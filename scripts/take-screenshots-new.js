@@ -17,8 +17,26 @@ const puppeteer = require('puppeteer');
     console.log('Navigating to dashboard...');
     await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
 
-    // Wait for data to load (if async)
+    // Wait for data to load
     await new Promise(r => setTimeout(r, 2000));
+
+    // Mask IPs
+    console.log('Masking IPs...');
+    await page.evaluate(() => {
+        // Helper to check if text is IP-like
+        const isIP = (text) => /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(text);
+
+        // Walk through all elements
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (isIP(node.nodeValue)) {
+                node.nodeValue = node.nodeValue.replace(/\d{1,3}\.\d{1,3}/g, '192.168'); // Normalize prefix if needed or just mask suffix
+                // Actually user asked to mask, so let's make it obvious but clean
+                node.nodeValue = node.nodeValue.replace(/(\d{1,3}\.\d{1,3}\.)\d{1,3}\.\d{1,3}/g, '$1xx.xx');
+            }
+        }
+    });
 
     const screenshotsDir = path.join(__dirname, '../screenshots');
     if (!fs.existsSync(screenshotsDir)) {
@@ -40,6 +58,18 @@ const puppeteer = require('puppeteer');
     await page.click('button[type="submit"]'); // Adjust selector if needed
 
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+    // Mask IPs for Admin
+    await page.evaluate(() => {
+        const isIP = (text) => /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(text);
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (isIP(node.nodeValue)) {
+                node.nodeValue = node.nodeValue.replace(/(\d{1,3}\.\d{1,3}\.)\d{1,3}\.\d{1,3}/g, '$1xx.xx');
+            }
+        }
+    });
 
     console.log('Taking admin screenshot...');
     await page.screenshot({ path: path.join(screenshotsDir, 'admin.png') });

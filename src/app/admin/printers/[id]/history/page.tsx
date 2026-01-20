@@ -179,7 +179,7 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                                 className="w-3 h-3 rounded-full border border-slate-200"
                                                 style={{ backgroundColor: getColorHex(record.color) }}
                                             />
-                                            {record.color}
+                                            {getColorName(record.color)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {record.source === 'auto' ? (
@@ -244,8 +244,8 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                     <option value="Cyan">青色 (Cyan)</option>
                                     <option value="Magenta">品红 (Magenta)</option>
                                     <option value="Yellow">黄色 (Yellow)</option>
-                                    <option value="Waste Toner">废粉盒</option>
-                                    <option value="Other">其他</option>
+                                    <option value="Waste Toner">废粉盒 (Waste)</option>
+                                    <option value="Other">其他 (Other)</option>
                                 </select>
                             </div>
 
@@ -286,10 +286,21 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
 
 function getColorHex(name: string) {
     const lower = name.toLowerCase();
-    if (lower.includes('cyan') || lower.includes('青') || lower.includes('c')) return '#06b6d4';
+    // Check Black first because 'black' contains 'c' which might false trigger cyan if checked loosely
+    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '#1e293b';
+    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '#06b6d4';
     if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '#d946ef';
     if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '#eab308';
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '#1e293b';
     if (lower.includes('waste')) return '#9ca3af';
     return '#64748b';
+}
+
+function getColorName(name: string) {
+    const lower = name.toLowerCase();
+    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '黑色';
+    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '青色';
+    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '品红';
+    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '黄色';
+    if (lower.includes('waste')) return '废粉盒';
+    return name; // Fallback
 }
