@@ -41,7 +41,7 @@ export function PrinterCard({ printer, onViewHistory }: PrinterCardProps) {
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <h3 className="font-black text-xl text-slate-800 leading-tight mb-1.5">{printer.location}</h3>
-                    <div className="font-mono text-sm text-slate-500 mb-4 space-y-1.5">
+                    <div className="font-mono text-sm text-slate-500 mb-4 space-y-1.5 min-h-[85px]">
                         <div className="font-bold">{printer.model}</div>
                         <div>{printer.ip}</div>
                         {printer.consumable_model && (

@@ -14,6 +14,7 @@ export function SupplyBar({ colorName, level, max, percent, type }: SupplyBarPro
     let textColor = 'text-white';
 
     const lowerName = colorName.toLowerCase();
+    const isBinaryCartridge = lowerName.includes('cartridge for lbp');
 
     if (type === 'waste') {
         barColor = '#94a3b8'; // Slate 400
@@ -50,22 +51,32 @@ export function SupplyBar({ colorName, level, max, percent, type }: SupplyBarPro
             </div>
 
             {/* Percentage Text ABOVE the bar */}
-            <div className={`mb-1.5 text-xs font-bold text-slate-800 text-center w-full`}>
-                {percent}%
+            <div className={`mb-1.5 text-xs font-bold text-slate-800 text-center w-full min-h-[1rem]`}>
+                {getDisplayText(percent, colorName)}
             </div>
 
             {/* The Bar Container */}
-            <div className="w-9 h-28 bg-slate-100/50 rounded-md relative overflow-hidden border border-slate-200 shadow-inner">
-                {/* The Liquid */}
-                <div
-                    className="absolute bottom-0 left-0 w-full transition-all duration-1000 ease-out flex items-center justify-center"
-                    style={{
-                        height: `${Math.max(percent, 0)}%`,
-                        backgroundColor: barColor,
-                    }}
-                >
-                    {/* No text inside liquid anymore */}
-                </div>
+            <div className="w-9 h-28 bg-slate-100/50 rounded-md relative overflow-hidden border border-slate-200 shadow-inner flex items-center justify-center">
+                {isBinaryCartridge ? (
+                    <div className={`flex flex-col items-center justify-center font-black text-lg leading-tight ${percent > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                        {(percent > 0 ? '正常' : '耗尽').split('').map((char, i) => (
+                            <span key={i}>{char}</span>
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        {/* The Liquid */}
+                        <div
+                            className="absolute bottom-0 left-0 w-full transition-all duration-1000 ease-out flex items-center justify-center"
+                            style={{
+                                height: `${Math.max(percent, 0)}%`,
+                                backgroundColor: barColor,
+                            }}
+                        >
+                            {/* No text inside liquid anymore */}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Short Label underneath */}
@@ -90,4 +101,12 @@ function getShortName(name: string, type: string) {
     if (!name.includes('cyan') && !name.includes('magenta') && !name.includes('yellow')) return '黑色';
 
     return name.substring(0, 2);
+}
+
+function getDisplayText(percent: number, colorName: string) {
+    const isBinaryCartridge = colorName.toLowerCase().includes('cartridge for lbp');
+    if (isBinaryCartridge) {
+        return '\u00A0'; // Text is shown inside the bar block
+    }
+    return `${percent}%`;
 }

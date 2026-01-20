@@ -93,6 +93,10 @@ export default function AdminDashboard() {
         window.location.href = '/api/admin/export';
     };
 
+    const handleExportHistory = () => {
+        window.location.href = '/api/admin/export-history';
+    };
+
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -156,11 +160,18 @@ export default function AdminDashboard() {
                     <h1 className="text-2xl font-bold text-slate-800">设备列表</h1>
                     <div className="flex gap-2">
                         <button
+                            onClick={handleExportHistory}
+                            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                        >
+                            <History size={18} />
+                            导出更换记录
+                        </button>
+                        <button
                             onClick={handleExport}
                             className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
                         >
                             <Download size={18} />
-                            导出
+                            导出设备
                         </button>
                         <label className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all cursor-pointer">
                             <Upload size={18} />
