@@ -1,4 +1,4 @@
-import { fetchPrinterStatus } from '../src/lib/snmp.ts';
+import { fetchPrinterStatus } from '../src/lib/snmp';
 
 const ip = '192.168.20.17'; // Ricoh MP 2014ad
 

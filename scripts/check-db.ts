@@ -5,7 +5,7 @@ const db = new Database('printers.db');
 console.log('All printers in database:\n');
 const printers = db.prepare('SELECT id, name, model, ip, location FROM printers').all();
 
-for (const p of printers) {
+for (const p of printers as any[]) {
     console.log(`ID: ${p.id}`);
     console.log(`  Name: ${p.name}`);
     console.log(`  Model: ${p.model}`);

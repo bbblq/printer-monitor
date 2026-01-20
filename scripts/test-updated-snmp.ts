@@ -1,5 +1,5 @@
 // Test the updated SNMP code with Ricoh printers
-import { fetchPrinterStatus } from '../src/lib/snmp.ts';
+import { fetchPrinterStatus } from '../src/lib/snmp';
 
 const printers = [
     { name: 'Ricoh MP 2014ad (1层西区)', ip: '192.168.20.17' },
@@ -26,7 +26,7 @@ const printers = [
                 console.log(`    Type: ${supply.type}`);
             }
         } catch (error) {
-            console.error(`Error: ${error.message}`);
+            console.error(`Error: ${(error as any).message}`);
         }
     }
 

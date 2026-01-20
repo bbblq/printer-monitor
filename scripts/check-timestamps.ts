@@ -11,7 +11,7 @@ const records = db.prepare(`
     LIMIT 3
 `).all();
 
-for (const record of records) {
+for (const record of records as any[]) {
     console.log(`ID: ${record.id}`);
     console.log(`Color: ${record.color}`);
     console.log(`DB Timestamp: ${record.recorded_at}`);

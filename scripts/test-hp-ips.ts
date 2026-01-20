@@ -1,4 +1,4 @@
-import { fetchPrinterStatus } from '../src/lib/snmp.ts';
+import { fetchPrinterStatus } from '../src/lib/snmp';
 
 const ips = [
     { name: 'HP MFP437 (Current DB IP)', ip: '192.168.20.244' },
@@ -22,7 +22,7 @@ const ips = [
                 console.log(`  - ${supply.color}: ${supply.percent}%`);
             }
         } catch (error) {
-            console.error(`Error: ${error.message}`);
+            console.error(`Error: ${(error as any).message}`);
         }
     }
 
