@@ -1,10 +1,12 @@
 FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat tzdata
+ENV TZ=Asia/Shanghai
 
 # Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 # better-sqlite3 requires python3, make and g++ to build
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
@@ -41,7 +43,6 @@ RUN adduser --system --uid 1001 nextjs
 # NOTE: If we use a different base OS for runner, we might need to rebuild. 
 # Here we use node:18-alpine for all stages, so it should be fine.
 # HOWEVER, better-sqlite3 might link to system libs.
-RUN apk add --no-cache libc6-compat
 
 COPY --from=builder /app/public ./public
 
