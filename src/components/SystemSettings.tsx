@@ -8,7 +8,8 @@ export function SystemSettings() {
         system_title: '',
         system_logo: '',
         refresh_interval: '15',
-        admin_password: ''
+        admin_password: '',
+        timezone: 'browser' // default
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -26,7 +27,8 @@ export function SystemSettings() {
                 system_title: data.system_title || 'Printer Monitor',
                 system_logo: data.system_logo || '',
                 refresh_interval: data.refresh_interval || '15',
-                admin_password: data.admin_password || ''
+                admin_password: data.admin_password || '',
+                timezone: data.timezone || 'browser'
             });
         } catch (e) {
             console.error('Failed to fetch settings', e);
@@ -128,6 +130,22 @@ export function SystemSettings() {
                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono"
                         placeholder="admin"
                     />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <Clock size={16} className="text-slate-400" />
+                        显示时区
+                    </label>
+                    <select
+                        value={settings.timezone || 'browser'}
+                        onChange={e => setSettings({ ...settings, timezone: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none bg-white"
+                    >
+                        <option value="browser">浏览器本地时间 (默认)</option>
+                        <option value="Asia/Shanghai">北京时间 (UTC+8)</option>
+                        <option value="UTC">协调世界时 (UTC)</option>
+                    </select>
                 </div>
 
                 <div className="md:col-span-3 flex items-center justify-between pt-2">

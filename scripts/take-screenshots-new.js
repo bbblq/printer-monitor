@@ -74,17 +74,33 @@ const puppeteer = require('puppeteer');
     console.log('Taking admin screenshot...');
     await page.screenshot({ path: path.join(screenshotsDir, 'admin.png') });
 
-    // Screenshot 3: History Modal/Page (Example)
-    // We can just screenshot the admin page again or omit detailed history for now if not easily accessible.
-    // The previous README had history.png. Let's try to grab a history view for first printer.
-    // Selector for history button in first row: table tr:first-child button[title="更换记录"]
+    // Screenshot 3: History Modal
+    await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
+    await new Promise(r => setTimeout(r, 2000)); // Wait for data load
+
     try {
-        const historyBtn = await page.$('tbody tr:first-child button[title="更换记录"]');
-        if (historyBtn) {
-            await historyBtn.click();
-            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+        // Find printer card for "1层东区" (East Area L1) or just the first card if not found, but user asked for specific one.
+        console.log('Opening history for 1层东区...');
+        // We use evaluate to find the button because selectors based on text are hard in pure CSS
+        const historyBtnFound = await page.evaluate(() => {
+            const cards = Array.from(document.querySelectorAll('.bg-white.rounded-xl.shadow-sm'));
+            const targetCard = cards.find(c => c.textContent.includes('1层东区')) || cards[0];
+            if (targetCard) {
+                const btn = targetCard.querySelector('button[title*="记录"], button svg.lucide-history')?.closest('button');
+                if (btn) {
+                    btn.click();
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        if (historyBtnFound) {
+            await new Promise(r => setTimeout(r, 1000)); // Wait for modal animation
             console.log('Taking history screenshot...');
             await page.screenshot({ path: path.join(screenshotsDir, 'history.png') });
+        } else {
+            console.log('History button not found, skipping.');
         }
     } catch (e) {
         console.log('Could not take history screenshot:', e.message);

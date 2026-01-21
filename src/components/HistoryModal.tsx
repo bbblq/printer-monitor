@@ -27,19 +27,25 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
     const [newColor, setNewColor] = useState('Black');
     const [newRemark, setNewRemark] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [timezone, setTimezone] = useState('browser');
 
-    const fetchHistory = () => {
+    const fetchHistory = async () => {
         setLoading(true);
-        fetch(`/api/history?printerId=${printer.id}`)
-            .then(res => res.json())
-            .then(data => {
-                setHistory(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
+        try {
+            // Fetch settings
+            const settingsRes = await fetch('/api/admin/settings');
+            const settings = await settingsRes.json();
+            if (settings.timezone) setTimezone(settings.timezone);
+
+            // Fetch history
+            const res = await fetch(`/api/history?printerId=${printer.id}`);
+            const data = await res.json();
+            setHistory(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -83,6 +89,23 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
     // Format date in Beijing timezone
     const formatDate = (dateStr: string) => {
         const utcDate = new Date(dateStr + ' UTC');
+
+        if (timezone === 'UTC') {
+            return utcDate.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
+        }
+
+        if (timezone === 'Asia/Shanghai') {
+            return new Intl.DateTimeFormat('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Shanghai'
+            }).format(utcDate).replace(/\//g, '/');
+        }
+
         const year = utcDate.getFullYear();
         const month = String(utcDate.getMonth() + 1).padStart(2, '0');
         const day = String(utcDate.getDate()).padStart(2, '0');
@@ -194,7 +217,7 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
                                         </div>
                                         <div>
                                             <div className="font-bold text-slate-800 flex items-center gap-2">
-                                                {record.color}
+                                                {getColorName(record.color)}
                                                 {record.source === 'manual' && (
                                                     <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-wide font-bold">手动</span>
                                                 )}
@@ -231,10 +254,21 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
 
 function getColor(name: string) {
     const lower = name.toLowerCase();
-    if (lower.includes('cyan') || lower.includes('青') || lower.includes('c')) return '#06b6d4';
+    // Check Black first because 'black' contains 'c' which might false trigger cyan if checked loosely
+    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '#1e293b';
+    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '#06b6d4';
     if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '#d946ef';
     if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '#eab308';
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '#1e293b';
     if (lower.includes('waste')) return '#9ca3af';
     return '#64748b';
+}
+
+function getColorName(name: string) {
+    const lower = name.toLowerCase();
+    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '黑色';
+    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '青色';
+    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '品红';
+    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '黄色';
+    if (lower.includes('waste')) return '废粉盒';
+    return name; // Fallback
 }

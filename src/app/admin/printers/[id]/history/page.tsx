@@ -36,6 +36,7 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
     const [newColor, setNewColor] = useState('Black');
     const [newRemark, setNewRemark] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [timezone, setTimezone] = useState('browser');
 
     useEffect(() => {
         fetchData();
@@ -43,6 +44,11 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
 
     const fetchData = async () => {
         try {
+            // Fetch settings
+            fetch('/api/admin/settings').then(res => res.json()).then(data => {
+                if (data.timezone) setTimezone(data.timezone);
+            }).catch(console.error);
+
             // Fetch printer info
             const printersRes = await fetch('/api/printers');
             const printers = await printersRes.json();
@@ -96,6 +102,26 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
 
     const formatDate = (dateStr: string) => {
         const utcDate = new Date(dateStr + ' UTC');
+
+        if (timezone === 'UTC') {
+            return utcDate.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
+        }
+
+        if (timezone === 'Asia/Shanghai') {
+            // Manual adjustment for Beijing time if not supported by simple conversion
+            // Or use intl
+            return new Intl.DateTimeFormat('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Shanghai'
+            }).format(utcDate).replace(/\//g, '/');
+        }
+
+        // Default to browser local
         const year = utcDate.getFullYear();
         const month = String(utcDate.getMonth() + 1).padStart(2, '0');
         const day = String(utcDate.getDate()).padStart(2, '0');
