@@ -61,6 +61,33 @@
     - 默认密码：`admin`。
     - 登录后请务必在 **系统配置** 中修改密码。
 
+### Docker Compose 部署 (CasaOS/Portainer 推荐)
+
+1.  **创建目录与文件**：
+    在你的服务器上创建一个新目录，并在其中创建 `docker-compose.yml` 文件，内容如下：
+
+    ```yaml
+    version: '3'
+    services:
+      printer-monitor:
+        image: bbblq/printer-monitor:latest
+        container_name: printer-monitor
+        restart: unless-stopped
+        ports:
+          - "3000:3000"
+        volumes:
+          - ./data:/app/data
+        environment:
+          - TZ=Asia/Shanghai
+    ```
+
+2.  **启动服务**：
+    ```bash
+    docker-compose up -d
+    ```
+
+    *对于 CasaOS 用户，可以直接在“自定义安装”中导入此 Docker Compose配置，或者手动填入上述参数。*
+
 ### 手动安装 (开发)
 
 1.  **克隆项目**：
