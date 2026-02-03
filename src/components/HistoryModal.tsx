@@ -88,22 +88,52 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
 
     // Format date in Beijing timezone
     const formatDate = (dateStr: string) => {
-        const utcDate = new Date(dateStr + ' UTC');
+        let utcDate: Date | null = null;
+
+        try {
+            // If it looks like SQL format YYYY-MM-DD HH:MM:SS
+            if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+                utcDate = new Date(dateStr.replace(' ', 'T') + 'Z');
+            } else {
+                // Try fallback with ' UTC' or direct parsing
+                utcDate = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + ' UTC');
+            }
+
+            // Check if invalid date
+            if (isNaN(utcDate.getTime())) {
+                utcDate = null;
+            }
+        } catch (e) {
+            console.error('Date parsing error:', e);
+            utcDate = null;
+        }
+
+        if (!utcDate) return dateStr;
 
         if (timezone === 'UTC') {
             return utcDate.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
         }
 
         if (timezone === 'Asia/Shanghai') {
-            return new Intl.DateTimeFormat('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: 'Asia/Shanghai'
-            }).format(utcDate).replace(/\//g, '/');
+            try {
+                return new Intl.DateTimeFormat('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'Asia/Shanghai'
+                }).format(utcDate).replace(/\//g, '/');
+            } catch (e) {
+                // Fallback for environments where Intl or timezone might fail
+                const year = utcDate.getFullYear();
+                const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+                const day = String(utcDate.getDate()).padStart(2, '0');
+                const hours = String(utcDate.getHours()).padStart(2, '0');
+                const minutes = String(utcDate.getMinutes()).padStart(2, '0');
+                return `${year}/${month}/${day} ${hours}:${minutes}`;
+            }
         }
 
         const year = utcDate.getFullYear();
