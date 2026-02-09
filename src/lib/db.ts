@@ -77,6 +77,14 @@ try {
   // Column already exists, ignore
 }
 
+// Migration: Add consumable_model column to printers if it doesn't exist
+try {
+  db.prepare('ALTER TABLE printers ADD COLUMN consumable_model TEXT').run();
+  console.log('[DB] Added consumable_model column to printers table');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Initial settings seed
 const seedSettings = (key: string, value: string) => {
   const exists = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(key);
