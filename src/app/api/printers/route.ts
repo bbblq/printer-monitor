@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { getAllPrinters, addPrinter, getPrinterSupplies } from '@/lib/printerService';
 import { initializeApp } from '@/lib/init';
 
+function isValidIP(ip: string): boolean {
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return ipv4Regex.test(ip);
+}
+
 // Ensure initialization runs on first access
 let initialized = false;
 
@@ -24,7 +29,11 @@ export async function POST(request: Request) {
     const { name, brand, model, ip, location } = body;
 
     if (!ip || !brand) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
+    }
+
+    if (!isValidIP(ip)) {
+        return NextResponse.json({ error: 'IP地址格式无效' }, { status: 400 });
     }
 
     try {

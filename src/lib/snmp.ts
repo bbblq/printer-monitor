@@ -24,8 +24,8 @@ const TABLE_OID_PREFIX = '1.3.6.1.2.1.43.11.1.1';
 export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
     return new Promise((resolve) => {
         const session = snmp.createSession(ip, 'public', {
-            timeout: 5000,
-            retries: 2,
+            timeout: 10000,
+            retries: 3,
             transport: 'udp4'
         });
 

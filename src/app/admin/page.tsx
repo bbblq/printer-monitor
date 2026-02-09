@@ -13,7 +13,8 @@ export default function AdminDashboard() {
     const [printers, setPrinters] = useState<Printer[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null); // State for editing
+    const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
+    const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
     const router = useRouter();
 
     const fetchPrinters = async () => {
@@ -22,7 +23,7 @@ export default function AdminDashboard() {
             const data = await res.json();
             setPrinters(data);
         } catch (e) {
-            console.error(e);
+            console.error('加载打印机列表失败:', e);
         } finally {
             setLoading(false);
         }
@@ -120,10 +121,10 @@ export default function AdminDashboard() {
                     const data = await res.json();
                     alert('导入失败: ' + data.error);
                 }
-            } catch (err) {
-                console.error(err);
-                alert('文件解析失败');
-            }
+        } catch (err) {
+            console.error(err);
+            alert('文件解析失败，请检查JSON格式');
+        }
             // Reset input
             e.target.value = '';
         };
@@ -210,31 +211,25 @@ export default function AdminDashboard() {
                                     key={p.id}
                                     draggable
                                     onDragStart={(e) => {
-                                        // e.dataTransfer.setData('text/plain', index.toString());
-                                        // Store index in a simpler way or state if component structure allowed, 
-                                        // but dataTransfer is standard.
                                         (e.target as HTMLTableRowElement).classList.add('opacity-50');
-                                        (window as any).__dragIndex = index; // Simple hack for accessible index in same window
+                                        setDragStartIndex(index);
                                     }}
                                     onDragEnd={(e) => {
                                         (e.target as HTMLTableRowElement).classList.remove('opacity-50');
-                                        delete (window as any).__dragIndex;
+                                        setDragStartIndex(null);
                                     }}
                                     onDragOver={(e) => {
-                                        e.preventDefault(); // Allow dropping
-                                        const dragIndex = (window as any).__dragIndex;
-                                        if (typeof dragIndex === 'number' && dragIndex !== index) {
-                                            // Perform swap
+                                        e.preventDefault();
+                                        if (dragStartIndex !== null && dragStartIndex !== index) {
                                             const newPrinters = [...printers];
-                                            const [moved] = newPrinters.splice(dragIndex, 1);
+                                            const [moved] = newPrinters.splice(dragStartIndex, 1);
                                             newPrinters.splice(index, 0, moved);
-                                            setPrinters(newPrinters); // Optimistic update
-                                            (window as any).__dragIndex = index; // Update index
+                                            setPrinters(newPrinters);
+                                            setDragStartIndex(index);
                                         }
                                     }}
                                     onDrop={async (e) => {
                                         e.preventDefault();
-                                        // Save order to server
                                         const ids = printers.map(p => p.id);
                                         try {
                                             await fetch('/api/printers/reorder', {
@@ -243,8 +238,8 @@ export default function AdminDashboard() {
                                                 body: JSON.stringify({ orderedIds: ids })
                                             });
                                         } catch (err) {
-                                            console.error('Failed to save order', err);
-                                            fetchPrinters(); // Revert on error
+                                            console.error('保存顺序失败', err);
+                                            fetchPrinters();
                                         }
                                     }}
                                     className="hover:bg-slate-50/80 transition-colors group cursor-move"

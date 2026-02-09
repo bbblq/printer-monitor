@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  printer-monitor:
+    image: bbblq/printer-monitor:latest
+    container_name: printer-monitor
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # 使用命名卷确保数据持久化，即使容器被删除数据也不会丢失
+      - printer-monitor-data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_PATH=/app/data/printers.db
+      - NODE_ENV=production
+    # 健康检查：确保 CasaOS 能正确监控容器状态
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1" ]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    # 日志限制：防止日志文件过大导致问题
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 资源限制：防止资源耗尽
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+# 声明命名卷，确保数据持久化
+volumes:
+  printer-monitor-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /DATA/AppData/printer-monitor/data

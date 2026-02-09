@@ -21,7 +21,14 @@ export default function AdminLogin() {
             });
 
             if (res.ok) {
-                Cookies.set('admin_auth', 'true', { expires: 1 }); // 1 day session
+                const isSecure = window.location.protocol === 'https:';
+                Cookies.set('admin_auth', 'true', {
+                    expires: 1,
+                    path: '/',
+                    sameSite: 'strict',
+                    httpOnly: false,
+                    secure: isSecure
+                });
                 router.push('/admin');
             } else {
                 setError(true);
