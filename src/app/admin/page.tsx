@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { AddPrinterModal } from '@/components/AddPrinterModal';
 import { EditPrinterModal } from '@/components/EditPrinterModal'; // Import Edit Modal
-import { SystemSettings } from '@/components/SystemSettings'; // Import System Settings
+import { SystemSettings } from '@/components/SystemSettings';
 import { Printer } from '@/lib/types';
 
 export default function AdminDashboard() {
@@ -141,9 +141,15 @@ export default function AdminDashboard() {
                     </div>
                     <span>打印机后台管理</span>
                 </div>
-                <div className="flex items-center gap-4">
+<div className="flex items-center gap-4">
                     <button onClick={() => router.push('/')} className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
                         返回看板
+                    </button>
+                    <button
+                        onClick={() => router.push('/admin/debug-snmp')}
+                        className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                    >
+                        SNMP 调试
                     </button>
                     <button
                         onClick={handleLogout}
@@ -289,7 +295,7 @@ export default function AdminDashboard() {
                     </table>
                 </div>
 
-                <div className="mt-12">
+<div className="mt-12">
                     <SystemSettings />
                 </div>
             </div>

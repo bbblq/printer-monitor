@@ -2,25 +2,17 @@
 import { startAutoRefresh } from './autoRefresh';
 import { seedPrinters } from './printerService';
 import { seedDefaultSettings } from './db';
-
-let initialized = false;
+import { initModelRulesTable } from './modelRules';
 
 export function initializeApp() {
-    if (initialized) {
-        return;
-    }
-
     console.log('[App Init] Initializing printer monitoring system...');
 
-    // Seed default settings
     seedDefaultSettings();
-
-    // Seed printers if needed
+    initModelRulesTable();
     seedPrinters();
 
-    // Start auto-refresh service
-    startAutoRefresh();
-
-    initialized = true;
     console.log('[App Init] Initialization complete');
 }
+
+// Auto-run initialization when imported
+initializeApp();

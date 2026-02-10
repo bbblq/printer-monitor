@@ -1,4 +1,5 @@
 import snmp from 'net-snmp';
+import { getMatchingRule, ModelRule } from './modelRules';
 
 export interface PrinterSNMPData {
     isOnline: boolean;
@@ -18,7 +19,6 @@ const OIDS = {
     hrPrinterDetectedErrorState: '1.3.6.1.2.1.25.3.5.1.1',
 };
 
-// prtMarkerSuppliesTable prefix
 const TABLE_OID_PREFIX = '1.3.6.1.2.1.43.11.1.1';
 
 export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
@@ -35,8 +35,6 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
             supplies: [],
         };
 
-        // 1. Check connectivity (Only check sysDescr first for max compatibility)
-        // Some HP printers fail if you request multiple OIDs or specific hrDeviceStatus index
         session.get([OIDS.sysDescr], (error, varbinds) => {
             if (error) {
                 session.close();
@@ -46,23 +44,20 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
             }
 
             result.isOnline = true;
-            result.status = 'Running'; // Default to Running if online
+            result.status = 'Running';
 
-            // Check if this is a Ricoh printer
             if (!varbinds || varbinds.length === 0 || !varbinds[0] || !varbinds[0].value) {
                 session.close();
                 resolve(result);
                 return;
             }
 
-            // --- 1. Model Detection & Quirks ---
-            const sysDescr = varbinds[0]!.value!.toString().toLowerCase();
+            const sysDescr = varbinds[0]!.value!.toString();
+            const rule = getMatchingRule(sysDescr);
+            if (rule) {
+                console.log(`[SNMP] Matched rule "${rule.name}" for ${ip}`);
+            }
 
-            // Rules for specific printer models
-            const isRicoh = sysDescr.includes('ricoh');
-            const isCanonLBP = sysDescr.includes('canon') && (sysDescr.includes('lbp') || sysDescr.includes('laser'));
-
-            // --- 2. Fetch Error State (Paper Jam, No Paper, etc.) ---
             session.get([OIDS.hrPrinterDetectedErrorState], (err, errorVarbinds) => {
                 let explicitStatus = '';
                 let hasNoTonerError = false;
@@ -72,22 +67,15 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                     const buffer = errorVarbinds[0].value;
                     if (Buffer.isBuffer(buffer) && buffer.length > 0) {
                         const b0 = buffer[0];
-                        // RFC 3805 - hrPrinterDetectedErrorState (Octet String)
-                        // B0: lowPaper(0)=0x80, noPaper(1)=0x40, lowToner(2)=0x20, noToner(3)=0x10,
-                        //     doorOpen(4)=0x08, jammed(5)=0x04, offline(6)=0x02, serviceRequested(7)=0x01
-
-                        // Check specific flags
                         if (b0 & 0x04) explicitStatus = '卡纸';
                         else if (b0 & 0x40) explicitStatus = '缺纸';
                         else if (b0 & 0x08) explicitStatus = '仓门打开';
-                        else if (b0 & 0x10) { explicitStatus = '如果没有墨粉'; hasNoTonerError = true; } // "No Toner"
+                        else if (b0 & 0x10) { explicitStatus = '缺粉'; hasNoTonerError = true; }
                         else if ((b0 & 0x01) || (b0 & 0x02)) explicitStatus = '故障';
 
-                        // Flag recording (even if not setting status text)
                         if (b0 & 0x10) hasNoTonerError = true;
                         if (b0 & 0x20) hasLowTonerError = true;
 
-                        // Check byte 1 for Input Tray Empty (if needed)
                         if (!explicitStatus && buffer.length > 1) {
                             const b1 = buffer[1];
                             if (b1 & 0x04) explicitStatus = '缺纸';
@@ -96,13 +84,9 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                 }
 
                 if (explicitStatus) {
-                    result.status = explicitStatus === '如果没有墨粉' ? '缺粉' : explicitStatus;
-                } else if (hasLowTonerError) {
-                    // Optional: Show low toner status if everything else is fine
-                    // result.status = '墨粉低'; 
+                    result.status = explicitStatus;
                 }
 
-                // --- 3. Fetch Supplies (Standard MIB) ---
                 const rows = new Map<string, { desc?: string, max?: number, level?: number }>();
 
                 session.subtree(TABLE_OID_PREFIX, 20, (varbinds) => {
@@ -119,13 +103,13 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                         if (!rows.has(rowIdx)) rows.set(rowIdx, {});
                         const row = rows.get(rowIdx)!;
 
-                        if (colId === 6) { // Description
+                        if (colId === 6) {
                             let val = vb.value;
                             if (Buffer.isBuffer(val)) val = val.toString();
                             row.desc = val?.toString() || '';
-                        } else if (colId === 8) { // Max Capacity
+                        } else if (colId === 8) {
                             row.max = typeof vb.value === 'number' ? vb.value : parseInt(vb.value?.toString() || '0');
-                        } else if (colId === 9) { // Level
+                        } else if (colId === 9) {
                             row.level = typeof vb.value === 'number' ? vb.value : parseInt(vb.value?.toString() || '0');
                         }
                     }
@@ -134,19 +118,12 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                         console.error(`[SNMP] Subtree error for ${ip}:`, err.message);
                     }
 
-                    // --- 4. Special Handling & Optimizations ---
-
-                    // A. Ricoh Specific Logic
-                    // Check if we got -3/-2 values (Ricoh issue)
-                    const hasInvalidValues = Array.from(rows.values()).some(row => row.level === -3 || row.max === -2);
-
-                    if (isRicoh && hasInvalidValues) {
-                        console.log(`[SNMP] Detected Ricoh printer with invalid standard values, trying Ricoh-specific OIDs for ${ip}`);
-                        // ... Ricoh Private MIB Walk (Nested) ...
-                        const ricohTonerTable = '1.3.6.1.4.1.367.3.2.1.2.24.1.1';
+                    if (rule?.quirks?.use_private_mib && rule.quirks.private_mib_oid) {
+                        console.log(`[SNMP] Using private MIB ${rule.quirks.private_mib_oid} for ${ip}`);
+                        const ricohTonerTable = rule.quirks.private_mib_oid;
                         const ricohRows = new Map<string, { name?: string, desc?: string, percent?: number }>();
                         session.subtree(ricohTonerTable, 10, (varbinds) => {
-                            for (const vb of varbinds) { // Parse Ricoh varbinds
+                            for (const vb of varbinds) {
                                 if (snmp.isVarbindError(vb)) continue;
                                 const oid = vb.oid;
                                 if (!oid.startsWith(ricohTonerTable)) continue;
@@ -166,9 +143,8 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                                 }
                             }
                         }, (ricohErr) => {
-                            if (ricohErr) console.error(`[SNMP] Ricoh hook error ${ip}:`, ricohErr.message);
+                            if (ricohErr) console.error(`[SNMP] Private MIB error ${ip}:`, ricohErr.message);
                             result.supplies = [];
-                            // Map Ricoh rows to result
                             for (const [idx, ricohRow] of ricohRows.entries()) {
                                 if (ricohRow.percent != null) {
                                     const desc = ricohRow.desc || ricohRow.name || 'Unknown Toner';
@@ -179,10 +155,12 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                             session.close();
                             resolve(result);
                         });
-                        return; // Exit main flow, waiting for Ricoh callback
+                        return;
                     }
 
-                    // B. Standard & Other Model Logic
+                    const forceNoToner = rule?.quirks?.force_level_on_error?.no_toner;
+                    const forceLowToner = rule?.quirks?.force_level_on_error?.low_toner;
+
                     for (const [key, row] of rows.entries()) {
                         if (row.desc && row.level != null && row.max != null) {
                             const desc = row.desc;
@@ -190,36 +168,36 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                             let max = row.max;
                             let percent = 0;
 
-                            // RFC 3805 Special Values: -1 (Other), -2 (Unknown), -3 (Some Remaining)
+                            const invMap = rule?.quirks?.invalid_value_mapping;
 
-                            // --- Canon LBP Optimization Rule ---
-                            // If Unknown (-2) or Some (-3), map to binary status based on ErrorState
-                            if (isCanonLBP && (level === -2 || level === -3)) {
-                                if (hasNoTonerError) {
-                                    level = 0; // Force Empty
-                                    percent = 0;
-                                } else {
-                                    level = 100; // Force Full (Operating)
-                                    percent = 100;
+                            if (forceNoToner !== undefined && forceLowToner !== undefined) {
+                                if (level === -2 || level === -3) {
+                                    if (hasNoTonerError) {
+                                        level = forceNoToner;
+                                        percent = forceNoToner;
+                                    } else {
+                                        level = forceLowToner;
+                                        percent = forceLowToner;
+                                    }
+                                    if (max <= 0) max = 100;
                                 }
-                                // Ensure max is positive so it renders
-                                if (max <= 0) max = 100;
-                            }
-                            // --- Standard Calculation ---
-                            else if (level === -3) {
-                                percent = 25; // "Some" generic fallback
-                            } else if (level === -2 || max === -2) {
-                                percent = 0; // Unknown
-                            } else if (max > 0 && level >= 0) {
-                                percent = Math.round((level / max) * 100);
-                            } else if (max <= 0 && level > 0 && level <= 100) {
-                                percent = level; // Direct percent
+                            } else {
+                                if (level === -3) {
+                                    percent = invMap?.some_remaining ?? 25;
+                                } else if (level === -2 || max === -2) {
+                                    percent = invMap?.unknown ?? 0;
+                                } else if (level === -1) {
+                                    percent = invMap?.other ?? 0;
+                                } else if (max > 0 && level >= 0) {
+                                    percent = Math.round((level / max) * 100);
+                                } else if (max <= 0 && level > 0 && level <= 100) {
+                                    percent = level;
+                                }
                             }
 
                             if (percent < 0) percent = 0;
                             if (percent > 100) percent = 100;
 
-                            // Type classification
                             let type: 'toner' | 'waste' | 'other' = 'other';
                             const lower = desc.toLowerCase();
 
@@ -231,7 +209,7 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                                 lower.includes('magenta') || lower.includes('yellow') ||
                                 lower.includes('黑色') || lower.includes('青色') ||
                                 lower.includes('品红色') || lower.includes('黄色') ||
-                                lower.includes('cartridge') // Generic cartridge
+                                lower.includes('cartridge')
                             ) {
                                 type = 'toner';
                             }
@@ -240,13 +218,9 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                         }
                     }
 
-                    // Final cleanup: Remove obvious placeholders
                     result.supplies = result.supplies.filter(supply => {
                         if (supply.level > 0 || supply.max > 0 || supply.percent > 0) return true;
                         if (supply.type === 'waste') return true;
-                        // Special case: if we forced a Canon supply to 0 (No Toner), we still want to SHOW it as empty,
-                        // not hide it.
-                        if (isCanonLBP && supply.type === 'toner') return true;
                         return false;
                     });
 
