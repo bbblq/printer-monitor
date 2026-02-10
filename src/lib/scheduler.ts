@@ -1,74 +1,53 @@
-import { notificationService } from './notification';
+
+import { getFeishuConfig, sendFeishuCard } from './notification';
 import { generateDailyReport } from './report';
-import { getAllNotificationSettings } from './notification';
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 
-function parseCron(cron: string): { hour: number; minute: number; dayOfWeek?: number } {
-    const parts = cron.split(' ');
-    if (parts.length < 5) {
-        return { hour: 9, minute: 0 };
-    }
-    const minute = parseInt(parts[1]) || 0;
-    const hour = parseInt(parts[2]) || 9;
-    const dayOfWeek = parts[5] ? parseInt(parts[5]) : undefined;
-    return { hour, minute, dayOfWeek };
-}
-
 export function startReportScheduler() {
-    if (schedulerInterval) {
-        console.log('[Report Scheduler] Already running');
-        return;
-    }
+    if (schedulerInterval) clearInterval(schedulerInterval);
 
-    console.log('[Report Scheduler] Starting...');
+    console.log('[Scheduler] Started');
+    // 每分钟检查一次
+    schedulerInterval = setInterval(() => {
+        try {
+            const config = getFeishuConfig();
+            if (!config.enabled || !config.notifyDaily) return;
 
-    const checkAndSend = () => {
-        const settings = getAllNotificationSettings() as any[];
-        const now = new Date();
+            const now = new Date();
+            // 强制使用北京时间 (UTC+8)
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const beijingTime = new Date(utc + (3600000 * 8));
 
-        for (const setting of settings) {
-            if (setting.report_enabled !== 1) continue;
+            const currentHour = beijingTime.getHours();
+            const currentMinute = beijingTime.getMinutes();
 
-            const { hour, minute, dayOfWeek } = parseCron(setting.report_cron || '0 9 * * 1');
+            const [targetHour, targetMinute] = (config.dailyTime || '09:00').split(':').map(Number);
 
-            if (now.getHours() === hour && now.getMinutes() === minute) {
-                if (dayOfWeek !== undefined && dayOfWeek !== -1) {
-                    if (now.getDay() !== dayOfWeek) continue;
-                }
-
-                console.log(`[Report Scheduler] Sending report for setting ${setting.id}...`);
+            if (currentHour === targetHour && currentMinute === targetMinute) {
+                console.log('[Scheduler] Sending daily report...');
                 const report = generateDailyReport();
-                notificationService.send({
-                    title: '📊 打印机耗材日报',
-                    content: report,
-                    type: 'report',
-                });
+                sendFeishuCard('📊 每日耗材报表', report, 'blue').catch(console.error);
             }
+        } catch (e) {
+            console.error('[Scheduler] Error checking schedule:', e);
         }
-    };
-
-    checkAndSend();
-    schedulerInterval = setInterval(checkAndSend, 60000);
+    }, 60 * 1000); // 60秒
 }
 
 export function stopReportScheduler() {
     if (schedulerInterval) {
         clearInterval(schedulerInterval);
         schedulerInterval = null;
-        console.log('[Report Scheduler] Stopped');
+        console.log('[Scheduler] Stopped');
     }
 }
 
-export function sendReportNow(): { success: boolean; message: string } {
+export async function sendReportNow() {
     try {
         const report = generateDailyReport();
-        notificationService.send({
-            title: '📊 打印机耗材报表（立即发送）',
-            content: report,
-            type: 'report',
-        });
-        return { success: true, message: '报表已发送' };
+        const result = await sendFeishuCard('📊 每日耗材报表 (立即发送)', report, 'blue');
+        return { success: result, message: result ? '已发送' : '发送失败' };
     } catch (e: any) {
         return { success: false, message: e.message };
     }

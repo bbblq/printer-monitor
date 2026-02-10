@@ -3,6 +3,7 @@ export interface Supply {
     color: string;
     level: number;
     max_capacity: number;
+    is_binary?: number; // 0或1，表示是否为二元状态
 }
 
 export interface Printer {

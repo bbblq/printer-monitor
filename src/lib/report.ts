@@ -1,5 +1,4 @@
 import db from './db';
-import { format } from 'datetime';
 
 export interface PrinterInfo {
     id: number;
@@ -58,73 +57,77 @@ export function getAllSupplies(): SupplyInfo[] {
     return supplies;
 }
 
-export function getRecentReplacements(days: number = 7): ReplacementInfo[] {
+export function getReplacementsByMonth(): ReplacementInfo[] {
     return db.prepare(`
         SELECT h.*, p.name as printer_name
         FROM supplies_history h
         JOIN printers p ON h.printer_id = p.id
-        WHERE h.source = 'auto' AND h.recorded_at >= datetime('now', '-${days} days')
+        WHERE h.source = 'auto' AND h.recorded_at >= datetime('now', 'start of month')
         ORDER BY h.recorded_at DESC
     `).all() as ReplacementInfo[];
+}
+
+export function getReplacementsByYear(): ReplacementInfo[] {
+    return db.prepare(`
+        SELECT h.*, p.name as printer_name
+        FROM supplies_history h
+        JOIN printers p ON h.printer_id = p.id
+        WHERE h.source = 'auto' AND h.recorded_at >= datetime('now', 'start of year')
+        ORDER BY h.recorded_at DESC
+    `).all() as ReplacementInfo[];
+}
+
+function formatDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+    return `${beijingTime.getMonth() + 1}/${beijingTime.getDate()} ${beijingTime.getHours().toString().padStart(2, '0')}:${beijingTime.getMinutes().toString().padStart(2, '0')}`;
 }
 
 export function generateDailyReport(): string {
     const printers = getAllPrinters();
     const supplies = getAllSupplies();
-    const today = new Date().toLocaleDateString('zh-CN');
+    const today = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
-    let report = `# 打印机耗材日报 - ${today}\n\n`;
-    report += `## 📊 概览\n\n`;
-    report += `- 打印机总数: ${printers.length}\n`;
-    report += `- 在线打印机: ${printers.filter(p => p.is_online).length}\n`;
-    report += `- 离线打印机: ${printers.filter(p => !p.is_online).length}\n\n`;
+    const monthReplacements = getReplacementsByMonth();
+    const yearReplacements = getReplacementsByYear();
 
-    report += `## 🖨️ 打印机状态\n\n`;
-    for (const p of printers) {
-        const statusIcon = p.is_online ? '🟢' : '🔴';
-        const statusText = p.is_online ? (p.status || '正常') : '离线';
-        report += `${statusIcon} **${p.name}** (${p.location})\n`;
-        report += `   - 型号: ${p.brand} ${p.model}\n`;
-        report += `   - 状态: ${statusText}\n\n`;
+    // 耗材不足（低于10%）
+    const lowSupplies = supplies.filter(s => s.percent > 0 && s.percent <= 10);
+
+    // 打印机状态统计
+    const onlinePrinters = printers.filter(p => p.is_online === 1);
+    const offlinePrinters = printers.filter(p => p.is_online === 0);
+
+    let report = `**🗓️ 日报时间**: ${today}\n\n`;
+
+    // 打印机状态概览
+    report += `**🔹 设备状态**\n`;
+    report += `总计: ${printers.length} 台 | 🟢 在线: ${onlinePrinters.length} | 🔴 离线: ${offlinePrinters.length}\n`;
+    if (offlinePrinters.length > 0) {
+        offlinePrinters.forEach(p => {
+            report += `  - ${p.name} (${p.location})\n`;
+        });
     }
 
-    report += `## 🧴 耗材状态\n\n`;
-    const lowSupplies = supplies.filter(s => s.percent <= 10);
-    const emptySupplies = supplies.filter(s => s.percent === 0);
+    report += `\n**🔹 本月更换记录**\n`;
+    if (monthReplacements.length === 0) {
+        report += `(无)\n`;
+    } else {
+        for (const r of monthReplacements) {
+            report += `- ${r.recorded_at ? r.recorded_at.substring(5, 16) : '未知时间'} ${r.printer_name} ${r.color}\n`;
+        }
+    }
 
-    if (lowSupplies.length > 0) {
-        report += `### ⚠️ 耗材不足 (≤10%)\n\n`;
+    report += `\n**🔸 耗材不足 (<10%)**\n`;
+    if (lowSupplies.length === 0) {
+        report += `(全部正常)\n`;
+    } else {
         for (const s of lowSupplies) {
             const printer = printers.find(p => p.id === s.printer_id);
-            const emoji = s.percent === 0 ? '🔴' : '🟡';
-            report += `${emoji} ${printer?.name || s.printer_id} - ${s.color}: ${s.percent}%\n`;
+            const emoji = s.percent <= 5 ? '🔴' : '🟡';
+            report += `${emoji} ${printer?.name || '未知'} ${s.color} **${s.percent}%**\n`;
         }
-        report += '\n';
-    } else {
-        report += `### ✅ 耗材充足\n\n`;
-        report += `所有打印机耗材均在正常范围。\n\n`;
     }
-
-    if (emptySupplies.length > 0) {
-        report += `### 🔴 耗材耗尽\n\n`;
-        for (const s of emptySupplies) {
-            const printer = printers.find(p => p.id === s.printer_id);
-            report += `🚨 ${printer?.name || s.printer_id} - ${s.color}: 已耗尽\n`;
-        }
-        report += '\n';
-    }
-
-    const replacements = getRecentReplacements(1);
-    if (replacements.length > 0) {
-        report += `## 🔄 今日更换记录\n\n`;
-        for (const r of replacements) {
-            report += `- ${r.recorded_at.split(' ')[1]?.substring(0, 5) || ''} ${r.printer_name} - ${r.color} (${r.level}%)\n`;
-        }
-        report += '\n';
-    }
-
-    report += `---\n`;
-    report += `生成时间: ${new Date().toLocaleString('zh-CN')}\n`;
 
     return report;
 }
@@ -134,18 +137,15 @@ export function generateAlertMessage(
     supply: SupplyInfo,
     alertType: 'low' | 'empty'
 ): { title: string; content: string } {
-    const title = alertType === 'empty' ? '🚨 耗材耗尽提醒' : '⚠️ 耗材不足提醒';
+    const title = alertType === 'empty' ? '🚨 耗材耗尽' : '⚠️ 耗材不足';
+    const status = alertType === 'empty' ? '已耗尽，请立即更换' : '含量过低，请及时更换';
 
-    const content = `
-打印机: ${printer.name}
+    const content = `打印机: ${printer.name}
 位置: ${printer.location}
 耗材: ${supply.color}
 剩余: ${supply.percent}%
-状态: ${alertType === 'empty' ? '已耗尽，请立即更换' : '含量过低，请及时更换'}
-
-IP: ${printer.ip}
-型号: ${printer.brand} ${printer.model}
-    `.trim();
+状态: ${status}
+型号: ${printer.brand} ${printer.model}`;
 
     return { title, content };
 }
@@ -156,16 +156,10 @@ export function generateReplacementMessage(
     oldPercent: number,
     newPercent: number
 ): { title: string; content: string } {
-    const content = `
-打印机: ${printer.name}
+    const content = `打印机: ${printer.name}
 位置: ${printer.location}
 耗材: ${supply.color}
-状态: 已更换
 用量: ${oldPercent.toFixed(0)}% → ${newPercent.toFixed(0)}%
-
-IP: ${printer.ip}
-型号: ${printer.brand} ${printer.model}
-    `.trim();
-
-    return { title: '🔄 耗材更换记录', content };
+型号: ${printer.brand} ${printer.model}`;
+    return { title: '🔄 耗材更换', content };
 }

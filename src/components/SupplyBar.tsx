@@ -6,15 +6,30 @@ interface SupplyBarProps {
     max: number;
     percent: number;
     type: 'toner' | 'waste' | 'other';
+    isBinary?: boolean; // 是否为二元状态（正常/耗尽）
+    printerModel?: string; // 打印机型号，用于特定型号的特殊显示逻辑
 }
 
-export function SupplyBar({ colorName, level, max, percent, type }: SupplyBarProps) {
+export function SupplyBar({ colorName, level, max, percent, type, isBinary, printerModel }: SupplyBarProps) {
     let barColor = '#e2e8f0';
     // Determine contrast text color
     let textColor = 'text-white';
 
     const lowerName = colorName.toLowerCase();
-    const isBinaryCartridge = lowerName.includes('cartridge for lbp');
+    const model = printerModel?.toLowerCase() || '';
+
+    // 判断是否需要显示为二元状态（正常/耗尽）
+    // 1. Canon LBP 系列 (Explicitly Binary)
+    const isLBP = lowerName.includes('cartridge for lbp');
+    // 2. 特定的 Ricoh 型号 (无法读取准确数值的型号)
+    const isStatusOnlyModel = model.includes('2014') || model.includes('3054') || model.includes('6300');
+
+    // 最终判定：如果是 LBP 或者 (是特定型号 且 是耗材 且 数值为100/0)
+    const isBinaryCartridge = isLBP || (
+        isStatusOnlyModel &&
+        (lowerName.includes('cartridge') || lowerName.includes('toner') || lowerName.includes('碳粉')) &&
+        (percent === 100 || percent === 0)
+    );
 
     if (type === 'waste') {
         barColor = '#94a3b8'; // Slate 400
@@ -52,7 +67,7 @@ export function SupplyBar({ colorName, level, max, percent, type }: SupplyBarPro
 
             {/* Percentage Text ABOVE the bar */}
             <div className={`mb-1.5 text-xs font-bold text-slate-800 text-center w-full min-h-[1rem]`}>
-                {getDisplayText(percent, colorName)}
+                {getDisplayText(percent, colorName, isBinaryCartridge)}
             </div>
 
             {/* The Bar Container */}
@@ -103,10 +118,10 @@ function getShortName(name: string, type: string) {
     return name.substring(0, 2);
 }
 
-function getDisplayText(percent: number, colorName: string) {
-    const isBinaryCartridge = colorName.toLowerCase().includes('cartridge for lbp');
-    if (isBinaryCartridge) {
+function getDisplayText(percent: number, colorName: string, isBinary: boolean) {
+    if (isBinary) {
         return '\u00A0'; // Text is shown inside the bar block
     }
     return `${percent}%`;
 }
+

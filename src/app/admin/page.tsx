@@ -7,7 +7,7 @@ import Cookies from 'js-cookie';
 import { AddPrinterModal } from '@/components/AddPrinterModal';
 import { EditPrinterModal } from '@/components/EditPrinterModal'; // Import Edit Modal
 import { SystemSettings } from '@/components/SystemSettings';
-import { NotificationSettings } from '@/components/NotificationSettings';
+import { FeishuSettings } from '@/components/FeishuSettings';
 import { Printer } from '@/lib/types';
 
 export default function AdminDashboard() {
@@ -122,10 +122,10 @@ export default function AdminDashboard() {
                     const data = await res.json();
                     alert('导入失败: ' + data.error);
                 }
-        } catch (err) {
-            console.error(err);
-            alert('文件解析失败，请检查JSON格式');
-        }
+            } catch (err) {
+                console.error(err);
+                alert('文件解析失败，请检查JSON格式');
+            }
             // Reset input
             e.target.value = '';
         };
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
                     </div>
                     <span>打印机后台管理</span>
                 </div>
-<div className="flex items-center gap-4">
+                <div className="flex items-center gap-4">
                     <button onClick={() => router.push('/')} className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
                         返回看板
                     </button>
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                                 <tr><td colSpan={8} className="p-12 text-center text-slate-500 italic">暂无打印机，请添加。</td></tr>
                             )}
                         </tbody>
-</table>
+                    </table>
                 </div>
 
                 <div className="mt-12">
@@ -301,22 +301,22 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-12">
-                    <NotificationSettings />
+                    <FeishuSettings />
                 </div>
+
+                <AddPrinterModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onAdd={() => fetchPrinters()}
+                />
+
+                <EditPrinterModal
+                    isOpen={!!editingPrinter}
+                    printer={editingPrinter}
+                    onClose={() => setEditingPrinter(null)}
+                    onUpdated={() => fetchPrinters()}
+                />
             </div>
-
-            <AddPrinterModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onAdd={() => fetchPrinters()}
-            />
-
-            <EditPrinterModal
-                isOpen={!!editingPrinter}
-                printer={editingPrinter}
-                onClose={() => setEditingPrinter(null)}
-                onUpdated={() => fetchPrinters()}
-            />
         </div>
     );
 }

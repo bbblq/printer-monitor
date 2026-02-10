@@ -33,6 +33,11 @@ const DEFAULT_RULES: Omit<ModelRule, 'id' | 'created_at' | 'updated_at'>[] = [
     quirks: {
       use_private_mib: true,
       private_mib_oid: '1.3.6.1.4.1.367.3.2.1.2.24.1.1',
+      invalid_value_mapping: {
+        some_remaining: 100,  // -3 表示有剩余但无法测量，显示100%表示"有墨"
+        unknown: 50,          // -2 表示未知
+        other: 0,             // -1 表示其他情况
+      },
     },
     enabled: 1,
   },
@@ -103,31 +108,31 @@ export function getAllRules(): ModelRule[] {
 }
 
 export function getMatchingRule(sysDescr: string): ModelRule | null {
-    const rules = db.prepare('SELECT * FROM model_rules WHERE enabled = 1 ORDER BY priority DESC').all() as any[];
-    const lowerDescr = sysDescr.toLowerCase();
+  const rules = db.prepare('SELECT * FROM model_rules WHERE enabled = 1 ORDER BY priority DESC').all() as any[];
+  const lowerDescr = sysDescr.toLowerCase();
 
-    for (const row of rules) {
-        const quirks = JSON.parse(row.quirks);
-        const { brand, model_pattern } = row;
+  for (const row of rules) {
+    const quirks = JSON.parse(row.quirks);
+    const { brand, model_pattern } = row;
 
-        if (brand && !lowerDescr.includes(brand.toLowerCase())) {
-            continue;
-        }
-
-        const pattern = model_pattern.toLowerCase();
-        if (pattern === '*') {
-            return { ...row, quirks };
-        }
-        if (pattern.includes('*')) {
-            const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-            if (regex.test(lowerDescr)) {
-                return { ...row, quirks };
-            }
-        } else if (lowerDescr.includes(pattern)) {
-            return { ...row, quirks };
-        }
+    if (brand && !lowerDescr.includes(brand.toLowerCase())) {
+      continue;
     }
-    return null;
+
+    const pattern = model_pattern.toLowerCase();
+    if (pattern === '*') {
+      return { ...row, quirks };
+    }
+    if (pattern.includes('*')) {
+      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+      if (regex.test(lowerDescr)) {
+        return { ...row, quirks };
+      }
+    } else if (lowerDescr.includes(pattern)) {
+      return { ...row, quirks };
+    }
+  }
+  return null;
 }
 
 export function addRule(rule: Omit<ModelRule, 'id' | 'created_at' | 'updated_at'>) {

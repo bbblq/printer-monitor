@@ -6,18 +6,18 @@ const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'printers.db');
 let dbInstance: Database.Database | null = null;
 
 function getDb(): Database.Database {
-    if (!dbInstance) {
-        dbInstance = new Database(dbPath);
-        dbInstance.pragma('journal_mode = WAL');
-    }
-    return dbInstance;
+  if (!dbInstance) {
+    dbInstance = new Database(dbPath);
+    dbInstance.pragma('journal_mode = WAL');
+  }
+  return dbInstance;
 }
 
 const db = {
-    prepare: (sql: string) => getDb().prepare(sql),
-    exec: (sql: string) => getDb().exec(sql),
-    transaction: (fn: any) => getDb().transaction(fn),
-    pragma: (sql: string) => getDb().pragma(sql),
+  prepare: (sql: string) => getDb().prepare(sql),
+  exec: (sql: string) => getDb().exec(sql),
+  transaction: (fn: any) => getDb().transaction(fn),
+  pragma: (sql: string) => getDb().pragma(sql),
 };
 
 db.exec(`
@@ -67,36 +67,22 @@ db.exec(`
     value TEXT
   );
 
-  CREATE TABLE IF NOT EXISTS notification_settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,
-    config TEXT NOT NULL,
-    enabled INTEGER DEFAULT 0,
-    alert_low_percent INTEGER DEFAULT 10,
-    alert_empty INTEGER DEFAULT 1,
-    alert_replacement INTEGER DEFAULT 1,
-    report_enabled INTEGER DEFAULT 0,
-    report_cron TEXT DEFAULT '0 9 * * 1',
-    report_recipients TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
 
-  CREATE TABLE IF NOT EXISTS notification_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    setting_id INTEGER,
-    type TEXT,
-    title TEXT,
-    content TEXT,
-    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT,
-    error TEXT,
-    FOREIGN KEY(setting_id) REFERENCES notification_settings(id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_noti_history_setting ON notification_history(setting_id);
 `);
+
+// 添加is_binary字段（如果不存在）
+try {
+  db.exec(`ALTER TABLE supplies_current ADD COLUMN is_binary INTEGER DEFAULT 0`);
+} catch (e) {
+  // 字段已存在，忽略错误
+}
+
+try {
+  db.exec(`ALTER TABLE supplies_history ADD COLUMN is_binary INTEGER DEFAULT 0`);
+} catch (e) {
+  // 字段已存在，忽略错误
+}
+
 
 export default db;
 

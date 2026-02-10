@@ -10,6 +10,7 @@ export interface PrinterSNMPData {
         max: number;
         percent: number;
         type: 'toner' | 'waste' | 'other';
+        isBinary?: boolean; // 是否为二元状态（正常/耗尽），无法精确测量百分比
     }>;
 }
 
@@ -121,48 +122,10 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                         console.error(`[SNMP] Subtree error for ${ip}:`, err.message);
                     }
 
-                    if (rule?.quirks?.use_private_mib && rule.quirks.private_mib_oid) {
-                        console.log(`[SNMP] Using private MIB ${rule.quirks.private_mib_oid} for ${ip}`);
-                        const ricohTonerTable = rule.quirks.private_mib_oid;
-                        const ricohRows = new Map<string, { name?: string, desc?: string, percent?: number }>();
-                        session.subtree(ricohTonerTable, 10, (varbinds) => {
-                            for (const vb of varbinds) {
-                                if (snmp.isVarbindError(vb)) continue;
-                                const oid = vb.oid;
-                                if (!oid.startsWith(ricohTonerTable)) continue;
-                                const parts = oid.split('.');
-                                const prefixParts = ricohTonerTable.split('.');
-                                if (parts.length <= prefixParts.length + 1) continue;
-                                const colId = parseInt(parts[prefixParts.length]);
-                                const rowIdx = parts.slice(prefixParts.length + 1).join('.');
-                                if (!ricohRows.has(rowIdx)) ricohRows.set(rowIdx, {});
-                                const ricohRow = ricohRows.get(rowIdx)!;
-                                if (colId === 2) {
-                                    let val = vb.value; if (Buffer.isBuffer(val)) val = val.toString(); ricohRow.name = val?.toString() || '';
-                                } else if (colId === 3) {
-                                    let val = vb.value; if (Buffer.isBuffer(val)) val = val.toString(); ricohRow.desc = val?.toString() || '';
-                                } else if (colId === 5) {
-                                    ricohRow.percent = typeof vb.value === 'number' ? vb.value : parseInt(vb.value?.toString() || '0');
-                                }
-                            }
-                        }, (ricohErr) => {
-                            if (ricohErr) console.error(`[SNMP] Private MIB error ${ip}:`, ricohErr.message);
-                            result.supplies = [];
-                            for (const [idx, ricohRow] of ricohRows.entries()) {
-                                if (ricohRow.percent != null) {
-                                    const desc = ricohRow.desc || ricohRow.name || 'Unknown Toner';
-                                    const type = (desc.toLowerCase().includes('waste') || desc.includes('废')) ? 'waste' : 'toner';
-                                    result.supplies.push({ color: desc, level: ricohRow.percent, max: 100, percent: ricohRow.percent, type });
-                                }
-                            }
-                            session.close();
-                            resolve(result);
-                        });
-                        return;
-                    }
-
+                    // 先处理标准MIB数据
                     const forceNoToner = rule?.quirks?.force_level_on_error?.no_toner;
                     const forceLowToner = rule?.quirks?.force_level_on_error?.low_toner;
+                    const invMap = rule?.quirks?.invalid_value_mapping;
 
                     for (const [key, row] of rows.entries()) {
                         if (row.desc && row.level != null && row.max != null) {
@@ -171,7 +134,8 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                             let max = row.max;
                             let percent = 0;
 
-                            const invMap = rule?.quirks?.invalid_value_mapping;
+                            // 保存原始level值，用于判断是否为二元状态
+                            const originalLevel = row.level;
 
                             if (forceNoToner !== undefined && forceLowToner !== undefined) {
                                 if (level === -2 || level === -3) {
@@ -186,7 +150,8 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                                 }
                             } else {
                                 if (level === -3) {
-                                    percent = invMap?.some_remaining ?? 25;
+                                    // -3 表示有剩余但无法测量，标记为二元状态
+                                    percent = invMap?.some_remaining ?? 100;
                                 } else if (level === -2 || max === -2) {
                                     percent = invMap?.unknown ?? 0;
                                 } else if (level === -1) {
@@ -217,10 +182,79 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                                 type = 'toner';
                             }
 
-                            result.supplies.push({ color: desc, level, max, percent, type });
+                            // 如果原始level为-3，标记为二元状态
+                            const isBinary = originalLevel === -3;
+                            result.supplies.push({ color: desc, level, max, percent, type, isBinary });
                         }
                     }
 
+                    // 检查标准MIB数据是否有效（没有负数level）
+                    const hasValidStandardData = result.supplies.length > 0 &&
+                        result.supplies.every(s => s.level >= 0 && s.max > 0);
+
+                    // 如果标准MIB数据无效且配置了Private MIB，则使用Private MIB
+                    if (!hasValidStandardData && rule?.quirks?.use_private_mib && rule.quirks.private_mib_oid) {
+                        console.log(`[SNMP] Standard MIB invalid, falling back to private MIB ${rule.quirks.private_mib_oid} for ${ip}`);
+                        const ricohTonerTable = rule.quirks.private_mib_oid;
+                        const ricohRows = new Map<string, { name?: string, desc?: string, percent?: number }>();
+                        session.subtree(ricohTonerTable, 10, (varbinds) => {
+                            for (const vb of varbinds) {
+                                if (snmp.isVarbindError(vb)) continue;
+                                const oid = vb.oid;
+                                if (!oid.startsWith(ricohTonerTable)) continue;
+                                const parts = oid.split('.');
+                                const prefixParts = ricohTonerTable.split('.');
+                                if (parts.length <= prefixParts.length + 1) continue;
+                                const colId = parseInt(parts[prefixParts.length]);
+                                const rowIdx = parts.slice(prefixParts.length + 1).join('.');
+                                if (!ricohRows.has(rowIdx)) ricohRows.set(rowIdx, {});
+                                const ricohRow = ricohRows.get(rowIdx)!;
+                                if (colId === 2) {
+                                    let val = vb.value; if (Buffer.isBuffer(val)) val = val.toString(); ricohRow.name = val?.toString() || '';
+                                } else if (colId === 3) {
+                                    let val = vb.value; if (Buffer.isBuffer(val)) val = val.toString(); ricohRow.desc = val?.toString() || '';
+                                } else if (colId === 5) {
+                                    ricohRow.percent = typeof vb.value === 'number' ? vb.value : parseInt(vb.value?.toString() || '0');
+                                }
+                            }
+                        }, (ricohErr) => {
+                            if (ricohErr) console.error(`[SNMP] Private MIB error ${ip}:`, ricohErr.message);
+                            result.supplies = [];
+
+                            for (const [idx, ricohRow] of ricohRows.entries()) {
+                                if (ricohRow.percent != null) {
+                                    const desc = ricohRow.desc || ricohRow.name || 'Unknown Toner';
+                                    const type = (desc.toLowerCase().includes('waste') || desc.includes('废')) ? 'waste' : 'toner';
+
+                                    let percent = ricohRow.percent;
+
+                                    // 处理负数值
+                                    let isBinary = false;
+                                    if (percent === -3) {
+                                        // -3 表示有剩余但无法测量，标记为二元状态
+                                        percent = invMap?.some_remaining ?? 100;
+                                        isBinary = true;
+                                    } else if (percent === -2 || percent === -100) {
+                                        percent = invMap?.unknown ?? 50;
+                                    } else if (percent === -1) {
+                                        percent = invMap?.other ?? 0;
+                                    } else if (percent < 0) {
+                                        percent = 0;
+                                    } else if (percent > 100) {
+                                        percent = 100;
+                                    }
+
+                                    result.supplies.push({ color: desc, level: percent, max: 100, percent, type, isBinary });
+                                }
+                            }
+                            session.close();
+                            resolve(result);
+                        });
+                        return;
+                    }
+
+                    // 使用标准MIB数据
+                    console.log(`[SNMP] Using standard MIB data for ${ip}`);
                     result.supplies = result.supplies.filter(supply => {
                         if (supply.level > 0 || supply.max > 0 || supply.percent > 0) return true;
                         if (supply.type === 'waste') return true;

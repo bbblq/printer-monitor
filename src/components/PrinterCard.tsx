@@ -83,6 +83,8 @@ export function PrinterCard({ printer, onViewHistory }: PrinterCardProps) {
                                     max={supply.max_capacity}
                                     percent={supply.max_capacity > 0 ? Math.round((supply.level / supply.max_capacity) * 100) : 0}
                                     type={supply.color.toLowerCase().includes('waste') ? 'waste' : 'toner'}
+                                    isBinary={supply.is_binary === 1}
+                                    printerModel={printer.model}
                                 />
                             ))}
                         </div>

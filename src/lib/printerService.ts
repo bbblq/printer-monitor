@@ -1,7 +1,7 @@
 import db from './db';
 import { fetchPrinterStatus } from './snmp';
-import { notificationService, getAllNotificationSettings } from './notification';
-import { generateAlertMessage, generateReplacementMessage } from './report';
+import { sendFeishuCard, getFeishuConfig } from './notification';
+
 
 export type Printer = {
     id: number;
@@ -45,7 +45,7 @@ export function seedPrinters() {
 
     if (count === 0) {
         const insert = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model) VALUES (@location, @brand, @model, @ip, @name, @consumable_model)');
-        const insertMany = db.transaction((printers) => {
+        const insertMany = db.transaction((printers: any[]) => {
             for (const p of printers) {
                 insert.run({ ...p, name: `${p.brand} ${p.model}`, consumable_model: '' });
             }
@@ -80,7 +80,7 @@ export function updatePrinter(id: number, data: Partial<Printer>) {
 }
 
 export function deletePrinter(id: number) {
-    const deleteTransaction = db.transaction((printerId) => {
+    const deleteTransaction = db.transaction((printerId: number) => {
         db.prepare('DELETE FROM printer_status WHERE printer_id = ?').run(printerId);
         db.prepare('DELETE FROM supplies_current WHERE printer_id = ?').run(printerId);
         db.prepare('DELETE FROM supplies_history WHERE printer_id = ?').run(printerId);
@@ -117,9 +117,7 @@ export function deleteReplacementHistory(id: number) {
 
 export async function refreshAllPrinters() {
     const printers = db.prepare('SELECT * FROM printers').all() as Printer[];
-    const notificationSettings = getAllNotificationSettings();
-    const enabledNotifications = notificationSettings.filter((s: any) => s.enabled === 1);
-    const hasAlertConfig = enabledNotifications.length > 0;
+    const feishu = getFeishuConfig();
 
     const refreshPrinter = async (p: Printer) => {
         try {
@@ -144,13 +142,13 @@ export async function refreshAllPrinters() {
                 db.prepare('DELETE FROM supplies_current WHERE printer_id = ?').run(p.id);
 
                 const updateSupply = db.prepare(`
-                    INSERT INTO supplies_current (printer_id, color, level, max_capacity)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO supplies_current (printer_id, color, level, max_capacity, is_binary)
+                    VALUES (?, ?, ?, ?, ?)
                 `);
 
                 const insertHistory = db.prepare(`
-                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, source, remark)
-                    VALUES (?, ?, ?, ?, 'auto', '系统自动检测')
+                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, is_binary, source, remark)
+                    VALUES (?, ?, ?, ?, ?, 'auto', '系统自动检测')
                 `);
 
                 const tx = db.transaction(() => {
@@ -163,39 +161,36 @@ export async function refreshAllPrinters() {
                             const newPercent = percent;
                             const percentJump = newPercent - oldPercent;
 
+                            // 1. 更换记录
                             if (percentJump > 40 && newPercent >= 90 && oldPercent < 100) {
                                 console.log(`[Replacement Detected] ${p.name} - ${supply.color}: ${oldPercent.toFixed(1)}% -> ${newPercent.toFixed(1)}%`);
-                                insertHistory.run(p.id, supply.color, supply.level, supply.max);
+                                insertHistory.run(p.id, supply.color, supply.level, supply.max, supply.isBinary ? 1 : 0);
 
-                                if (hasAlertConfig) {
-                                    for (const setting of enabledNotifications) {
-                                        if (setting.alert_replacement === 1) {
-                                            const msg = generateReplacementMessage(p, supply, oldPercent, newPercent);
-                                            notificationService.send({ ...msg, type: 'alert' });
-                                            break;
-                                        }
-                                    }
+                                if (feishu.enabled && feishu.notifyReplacement) {
+                                    const title = `🟢 耗材已更换 - ${p.name}`;
+                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color}\n**变化**: ${oldPercent.toFixed(0)}% ➔ ${newPercent.toFixed(0)}%`;
+                                    sendFeishuCard(title, content, 'green').catch(console.error);
+                                }
+                            }
+
+                            // 2. 低墨预警 (状态变化检测)
+                            if (feishu.enabled && feishu.notifyLow && (supply.type === 'toner' || supply.type === 'other')) {
+                                // 变为耗尽 (0%)
+                                if (percent === 0 && oldPercent > 0) {
+                                    const title = `🔴 耗材耗尽 - ${p.name}`;
+                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 已耗尽，请及时更换！`;
+                                    sendFeishuCard(title, content, 'red').catch(console.error);
+                                }
+                                // 低于 10% (且之前大于 10%)
+                                else if (percent <= 10 && percent > 0 && oldPercent > 10) {
+                                    const title = `🟠 耗材不足 - ${p.name}`;
+                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 剩余 **${Math.round(percent)}%**，请准备更换。`;
+                                    sendFeishuCard(title, content, 'orange').catch(console.error);
                                 }
                             }
                         }
 
-                        if (hasAlertConfig) {
-                            for (const setting of enabledNotifications) {
-                                const lowPercent = setting.alert_low_percent || 10;
-
-                                if (supply.type === 'toner') {
-                                    if (percent === 0 && setting.alert_empty === 1) {
-                                        const msg = generateAlertMessage(p, { ...supply, percent }, 'empty');
-                                        notificationService.send({ ...msg, type: 'alert' });
-                                    } else if (percent <= lowPercent && percent > 0 && old?.max !== supply.max) {
-                                        const msg = generateAlertMessage(p, { ...supply, percent }, 'low');
-                                        notificationService.send({ ...msg, type: 'alert' });
-                                    }
-                                }
-                            }
-                        }
-
-                        updateSupply.run(p.id, supply.color, supply.level, supply.max);
+                        updateSupply.run(p.id, supply.color, supply.level, supply.max, supply.isBinary ? 1 : 0);
                     }
                 });
                 tx();
