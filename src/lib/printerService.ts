@@ -1,5 +1,7 @@
 import db from './db';
 import { fetchPrinterStatus } from './snmp';
+import { notificationService, getAllNotificationSettings } from './notification';
+import { generateAlertMessage, generateReplacementMessage } from './report';
 
 export type Printer = {
     id: number;
@@ -25,6 +27,8 @@ export type Supply = {
     color: string;
     level: number;
     max_capacity: number;
+    type?: 'toner' | 'waste' | 'other';
+    percent?: number;
 };
 
 const INITIAL_PRINTERS: Omit<Printer, 'id' | 'added_at'>[] = [];
@@ -113,6 +117,9 @@ export function deleteReplacementHistory(id: number) {
 
 export async function refreshAllPrinters() {
     const printers = db.prepare('SELECT * FROM printers').all() as Printer[];
+    const notificationSettings = getAllNotificationSettings();
+    const enabledNotifications = notificationSettings.filter((s: any) => s.enabled === 1);
+    const hasAlertConfig = enabledNotifications.length > 0;
 
     const refreshPrinter = async (p: Printer) => {
         try {
@@ -149,15 +156,42 @@ export async function refreshAllPrinters() {
                 const tx = db.transaction(() => {
                     for (const supply of data.supplies) {
                         const old = currentSupplies.get(supply.color);
+                        const percent = supply.max > 0 ? (supply.level / supply.max) * 100 : 0;
 
                         if (old) {
                             const oldPercent = old.max > 0 ? (old.level / old.max) * 100 : 0;
-                            const newPercent = supply.max > 0 ? (supply.level / supply.max) * 100 : 0;
+                            const newPercent = percent;
                             const percentJump = newPercent - oldPercent;
 
                             if (percentJump > 40 && newPercent >= 90 && oldPercent < 100) {
                                 console.log(`[Replacement Detected] ${p.name} - ${supply.color}: ${oldPercent.toFixed(1)}% -> ${newPercent.toFixed(1)}%`);
                                 insertHistory.run(p.id, supply.color, supply.level, supply.max);
+
+                                if (hasAlertConfig) {
+                                    for (const setting of enabledNotifications) {
+                                        if (setting.alert_replacement === 1) {
+                                            const msg = generateReplacementMessage(p, supply, oldPercent, newPercent);
+                                            notificationService.send({ ...msg, type: 'alert' });
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (hasAlertConfig) {
+                            for (const setting of enabledNotifications) {
+                                const lowPercent = setting.alert_low_percent || 10;
+
+                                if (supply.type === 'toner') {
+                                    if (percent === 0 && setting.alert_empty === 1) {
+                                        const msg = generateAlertMessage(p, { ...supply, percent }, 'empty');
+                                        notificationService.send({ ...msg, type: 'alert' });
+                                    } else if (percent <= lowPercent && percent > 0 && old?.max !== supply.max) {
+                                        const msg = generateAlertMessage(p, { ...supply, percent }, 'low');
+                                        notificationService.send({ ...msg, type: 'alert' });
+                                    }
+                                }
                             }
                         }
 

@@ -3,6 +3,7 @@ import { startAutoRefresh } from './autoRefresh';
 import { seedPrinters } from './printerService';
 import { seedDefaultSettings } from './db';
 import { initModelRulesTable } from './modelRules';
+import { startReportScheduler } from './scheduler';
 
 export function initializeApp() {
     console.log('[App Init] Initializing printer monitoring system...');
@@ -10,6 +11,7 @@ export function initializeApp() {
     seedDefaultSettings();
     initModelRulesTable();
     seedPrinters();
+    startReportScheduler();
 
     console.log('[App Init] Initialization complete');
 }

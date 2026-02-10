@@ -103,28 +103,31 @@ export function getAllRules(): ModelRule[] {
 }
 
 export function getMatchingRule(sysDescr: string): ModelRule | null {
-  const rules = db.prepare('SELECT * FROM model_rules WHERE enabled = 1 ORDER BY priority DESC').all() as any[];
-  const lowerDescr = sysDescr.toLowerCase();
+    const rules = db.prepare('SELECT * FROM model_rules WHERE enabled = 1 ORDER BY priority DESC').all() as any[];
+    const lowerDescr = sysDescr.toLowerCase();
 
-  for (const row of rules) {
-    const quirks = JSON.parse(row.quirks);
-    const { brand, model_pattern } = row;
+    for (const row of rules) {
+        const quirks = JSON.parse(row.quirks);
+        const { brand, model_pattern } = row;
 
-    if (brand && !lowerDescr.includes(brand.toLowerCase())) {
-      continue;
+        if (brand && !lowerDescr.includes(brand.toLowerCase())) {
+            continue;
+        }
+
+        const pattern = model_pattern.toLowerCase();
+        if (pattern === '*') {
+            return { ...row, quirks };
+        }
+        if (pattern.includes('*')) {
+            const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+            if (regex.test(lowerDescr)) {
+                return { ...row, quirks };
+            }
+        } else if (lowerDescr.includes(pattern)) {
+            return { ...row, quirks };
+        }
     }
-
-    const pattern = model_pattern.toLowerCase();
-    if (pattern.includes('*')) {
-      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-      if (regex.test(lowerDescr)) {
-        return { ...row, quirks };
-      }
-    } else if (lowerDescr.includes(pattern)) {
-      return { ...row, quirks };
-    }
-  }
-  return null;
+    return null;
 }
 
 export function addRule(rule: Omit<ModelRule, 'id' | 'created_at' | 'updated_at'>) {

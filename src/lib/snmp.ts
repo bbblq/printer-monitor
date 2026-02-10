@@ -53,9 +53,12 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
             }
 
             const sysDescr = varbinds[0]!.value!.toString();
+            console.log(`[SNMP] ${ip} sysDescr: ${sysDescr}`);
             const rule = getMatchingRule(sysDescr);
             if (rule) {
-                console.log(`[SNMP] Matched rule "${rule.name}" for ${ip}`);
+                console.log(`[SNMP] ${ip} Matched rule: ${rule.name}, use_private_mib: ${rule.quirks?.use_private_mib}`);
+            } else {
+                console.log(`[SNMP] ${ip} No rule matched`);
             }
 
             session.get([OIDS.hrPrinterDetectedErrorState], (err, errorVarbinds) => {
@@ -221,6 +224,7 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                     result.supplies = result.supplies.filter(supply => {
                         if (supply.level > 0 || supply.max > 0 || supply.percent > 0) return true;
                         if (supply.type === 'waste') return true;
+                        if (supply.max > 0) return true;
                         return false;
                     });
 

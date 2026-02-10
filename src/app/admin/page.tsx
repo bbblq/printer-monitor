@@ -7,6 +7,7 @@ import Cookies from 'js-cookie';
 import { AddPrinterModal } from '@/components/AddPrinterModal';
 import { EditPrinterModal } from '@/components/EditPrinterModal'; // Import Edit Modal
 import { SystemSettings } from '@/components/SystemSettings';
+import { NotificationSettings } from '@/components/NotificationSettings';
 import { Printer } from '@/lib/types';
 
 export default function AdminDashboard() {
@@ -292,11 +293,15 @@ export default function AdminDashboard() {
                                 <tr><td colSpan={8} className="p-12 text-center text-slate-500 italic">暂无打印机，请添加。</td></tr>
                             )}
                         </tbody>
-                    </table>
+</table>
                 </div>
 
-<div className="mt-12">
+                <div className="mt-12">
                     <SystemSettings />
+                </div>
+
+                <div className="mt-12">
+                    <NotificationSettings />
                 </div>
             </div>
 
