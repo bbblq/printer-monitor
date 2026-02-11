@@ -83,6 +83,15 @@ try {
   // 字段已存在，忽略错误
 }
 
+// 添加replaced_at字段（实际换墨日期，与recorded_at记录添加时间分离）
+try {
+  db.exec(`ALTER TABLE supplies_history ADD COLUMN replaced_at DATETIME`);
+  // 迁移：已有数据的replaced_at用recorded_at填充
+  db.exec(`UPDATE supplies_history SET replaced_at = recorded_at WHERE replaced_at IS NULL`);
+} catch (e) {
+  // 字段已存在，忽略错误
+}
+
 
 export default db;
 

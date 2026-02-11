@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     }
 
     if (body.action === 'add_history') {
-        const { printerId, color, remark, level, maxCapacity, source } = body;
-        addReplacementHistory(printerId, color, remark, level, maxCapacity, source);
+        const { printerId, color, remark, level, maxCapacity, source, replacedAt } = body;
+        addReplacementHistory(printerId, color, remark, level, maxCapacity, source, replacedAt);
         return NextResponse.json({ success: true });
     }
 

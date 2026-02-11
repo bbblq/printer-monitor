@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, History, Droplet, User, Save, Plus } from 'lucide-react';
+import { X, History, Droplet, User, Save, Plus, Calendar } from 'lucide-react';
 import { Printer } from '@/lib/types';
 
 interface HistoryRecord {
@@ -9,6 +9,7 @@ interface HistoryRecord {
     color: string;
     remark: string;
     source: 'auto' | 'manual';
+    replaced_at: string;
     recorded_at: string;
 }
 
@@ -26,6 +27,11 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
     // Add Form State
     const [newColor, setNewColor] = useState('Black');
     const [newRemark, setNewRemark] = useState('');
+    const [newReplacedAt, setNewReplacedAt] = useState(() => {
+        // Default to today in YYYY-MM-DD format
+        const now = new Date();
+        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    });
     const [submitting, setSubmitting] = useState(false);
     const [timezone, setTimezone] = useState('browser');
 
@@ -56,6 +62,8 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
         e.preventDefault();
         setSubmitting(true);
         try {
+            // Convert selected date to UTC datetime string for storage
+            const replacedAtUTC = newReplacedAt + ' 00:00:00';
             await fetch('/api/history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -66,7 +74,8 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
                     remark: newRemark,
                     level: 100, // Default to full
                     maxCapacity: 100,
-                    source: 'manual'
+                    source: 'manual',
+                    replacedAt: replacedAtUTC
                 })
             });
             setIsAdding(false);
@@ -198,15 +207,24 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-slate-600 text-sm font-medium mb-1.5">备注 (选填)</label>
+                                        <label className="block text-slate-600 text-sm font-medium mb-1.5">换墨日期</label>
                                         <input
-                                            type="text"
+                                            type="date"
                                             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="例如：原装墨粉"
-                                            value={newRemark}
-                                            onChange={e => setNewRemark(e.target.value)}
+                                            value={newReplacedAt}
+                                            onChange={e => setNewReplacedAt(e.target.value)}
                                         />
                                     </div>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block text-slate-600 text-sm font-medium mb-1.5">备注 (选填)</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="例如：原装墨粉"
+                                        value={newRemark}
+                                        onChange={e => setNewRemark(e.target.value)}
+                                    />
                                 </div>
                                 <div className="flex justify-end gap-2">
                                     <button
@@ -253,7 +271,15 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
                                                 )}
                                             </div>
                                             <div className="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-x-3">
-                                                <span>{formatDate(record.recorded_at)}</span>
+                                                <span className="flex items-center gap-1" title="换墨日期">
+                                                    <Calendar size={12} className="text-slate-400" />
+                                                    {formatDate(record.replaced_at || record.recorded_at)}
+                                                </span>
+                                                {record.source === 'manual' && record.replaced_at !== record.recorded_at && (
+                                                    <span className="text-slate-400 text-xs" title="记录添加时间">
+                                                        记录于 {formatDate(record.recorded_at)}
+                                                    </span>
+                                                )}
                                                 {record.remark && (
                                                     <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs border border-slate-200 max-w-[200px] truncate" title={record.remark}>
                                                         {record.remark}

@@ -25,6 +25,7 @@ export interface ReplacementInfo {
     printer_name: string;
     color: string;
     level: number;
+    replaced_at: string;
     recorded_at: string;
 }
 
@@ -62,8 +63,8 @@ export function getReplacementsByMonth(): ReplacementInfo[] {
         SELECT h.*, p.name as printer_name
         FROM supplies_history h
         JOIN printers p ON h.printer_id = p.id
-        WHERE h.source = 'auto' AND h.recorded_at >= datetime('now', 'start of month')
-        ORDER BY h.recorded_at DESC
+        WHERE h.source = 'auto' AND COALESCE(h.replaced_at, h.recorded_at) >= datetime('now', 'start of month')
+        ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
     `).all() as ReplacementInfo[];
 }
 
@@ -72,8 +73,8 @@ export function getReplacementsByYear(): ReplacementInfo[] {
         SELECT h.*, p.name as printer_name
         FROM supplies_history h
         JOIN printers p ON h.printer_id = p.id
-        WHERE h.source = 'auto' AND h.recorded_at >= datetime('now', 'start of year')
-        ORDER BY h.recorded_at DESC
+        WHERE h.source = 'auto' AND COALESCE(h.replaced_at, h.recorded_at) >= datetime('now', 'start of year')
+        ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
     `).all() as ReplacementInfo[];
 }
 
@@ -114,7 +115,8 @@ export function generateDailyReport(): string {
         report += `(无)\n`;
     } else {
         for (const r of monthReplacements) {
-            report += `- ${r.recorded_at ? r.recorded_at.substring(5, 16) : '未知时间'} ${r.printer_name} ${r.color}\n`;
+            const displayDate = r.replaced_at || r.recorded_at;
+            report += `- ${displayDate ? displayDate.substring(5, 16) : '未知时间'} ${r.printer_name} ${r.color}\n`;
         }
     }
 

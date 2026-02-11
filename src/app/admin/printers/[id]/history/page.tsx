@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Trash2, Cpu, User, History, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Cpu, User, History, Save, Calendar } from 'lucide-react';
 
 interface Printer {
     id: number;
@@ -19,6 +19,7 @@ interface HistoryRecord {
     level: number;
     max_capacity: number;
     source: 'auto' | 'manual';
+    replaced_at: string;
     recorded_at: string;
 }
 
@@ -35,6 +36,10 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
     // Form state
     const [newColor, setNewColor] = useState('Black');
     const [newRemark, setNewRemark] = useState('');
+    const [newReplacedAt, setNewReplacedAt] = useState(() => {
+        const now = new Date();
+        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    });
     const [submitting, setSubmitting] = useState(false);
     const [timezone, setTimezone] = useState('browser');
 
@@ -69,6 +74,7 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
     const handleAdd = async () => {
         setSubmitting(true);
         try {
+            const replacedAtUTC = newReplacedAt + ' 00:00:00';
             await fetch('/api/history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -79,7 +85,8 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                     remark: newRemark,
                     level: 100,
                     maxCapacity: 100,
-                    source: 'manual'
+                    source: 'manual',
+                    replacedAt: replacedAtUTC
                 })
             });
             setShowAddModal(false);
@@ -193,6 +200,7 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                     <th className="px-6 py-4">颜色</th>
                                     <th className="px-6 py-4">来源</th>
                                     <th className="px-6 py-4">备注</th>
+                                    <th className="px-6 py-4">换墨日期</th>
                                     <th className="px-6 py-4">记录时间</th>
                                     <th className="px-6 py-4 text-right">操作</th>
                                 </tr>
@@ -228,6 +236,12 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                             ) : <span className="text-slate-300">-</span>}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar size={12} className="text-blue-400" />
+                                                {formatDate(record.replaced_at || record.recorded_at)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-400 font-mono text-xs">
                                             {formatDate(record.recorded_at)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -273,6 +287,17 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                     <option value="Waste Toner">废粉盒 (Waste)</option>
                                     <option value="Other">其他 (Other)</option>
                                 </select>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-slate-700 text-sm font-bold mb-2">换墨日期</label>
+                                <input
+                                    type="date"
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={newReplacedAt}
+                                    onChange={e => setNewReplacedAt(e.target.value)}
+                                />
+                                <p className="text-xs text-slate-400 mt-1">实际更换墨粉的日期，默认为今天</p>
                             </div>
 
                             <div className="mb-6">

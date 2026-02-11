@@ -17,10 +17,11 @@ export async function GET() {
                 h.max_capacity,
                 h.source,
                 h.remark,
+                h.replaced_at,
                 h.recorded_at
             FROM supplies_history h
             LEFT JOIN printers p ON h.printer_id = p.id
-            ORDER BY h.recorded_at DESC
+            ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
         `).all();
 
         return new NextResponse(JSON.stringify(history, null, 2), {

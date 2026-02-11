@@ -90,7 +90,7 @@ export function deletePrinter(id: number) {
 }
 
 export function getReplacementHistory(printerId: number) {
-    return db.prepare('SELECT * FROM supplies_history WHERE printer_id = ? ORDER BY recorded_at DESC').all(printerId);
+    return db.prepare('SELECT * FROM supplies_history WHERE printer_id = ? ORDER BY COALESCE(replaced_at, recorded_at) DESC').all(printerId);
 }
 
 export function reorderPrinters(orderedIds: number[]) {
@@ -103,12 +103,14 @@ export function reorderPrinters(orderedIds: number[]) {
     updateMany(orderedIds);
 }
 
-export function addReplacementHistory(printerId: number, color: string, remark: string = '', level: number = 100, maxCapacity: number = 100, source: 'auto' | 'manual' = 'manual') {
+export function addReplacementHistory(printerId: number, color: string, remark: string = '', level: number = 100, maxCapacity: number = 100, source: 'auto' | 'manual' = 'manual', replacedAt?: string) {
     const stmt = db.prepare(`
-        INSERT INTO supplies_history (printer_id, color, level, max_capacity, source, remark)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO supplies_history (printer_id, color, level, max_capacity, source, remark, replaced_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    return stmt.run(printerId, color, level, maxCapacity, source, remark);
+    // 自动记录：replaced_at = 当前时间（即recorded_at）；手动记录：用户指定的日期
+    const replacedAtValue = replacedAt || new Date().toISOString().replace('T', ' ').substring(0, 19);
+    return stmt.run(printerId, color, level, maxCapacity, source, remark, replacedAtValue);
 }
 
 export function deleteReplacementHistory(id: number) {
@@ -147,8 +149,8 @@ export async function refreshAllPrinters() {
                 `);
 
                 const insertHistory = db.prepare(`
-                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, is_binary, source, remark)
-                    VALUES (?, ?, ?, ?, ?, 'auto', '系统自动检测')
+                    INSERT INTO supplies_history (printer_id, color, level, max_capacity, is_binary, source, remark, replaced_at)
+                    VALUES (?, ?, ?, ?, ?, 'auto', '系统自动检测', CURRENT_TIMESTAMP)
                 `);
 
                 const tx = db.transaction(() => {

@@ -13,13 +13,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const { id } = await params;
         const printerId = parseInt(id);
         const body = await request.json();
-        const { action, color, level, maxCapacity, historyId } = body;
+        const { action, color, level, maxCapacity, historyId, replacedAt } = body;
 
         if (action === 'add') {
             if (!color || level == null || maxCapacity == null) {
                 return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
             }
-            addReplacementHistory(printerId, color, '', level, maxCapacity, 'manual');
+            addReplacementHistory(printerId, color, '', level, maxCapacity, 'manual', replacedAt);
             return NextResponse.json({ success: true });
         } else if (action === 'delete' && historyId) {
             deleteReplacementHistory(historyId);
