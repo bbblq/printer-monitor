@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Printer } from '@/lib/types';
 import { PrinterCard } from '@/components/PrinterCard';
 import { HistoryModal } from '@/components/HistoryModal';
-import { RefreshCw, Monitor } from 'lucide-react';
+import { RefreshCw, Monitor, History } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Dashboard() {
     const [printers, setPrinters] = useState<Printer[]>([]);
@@ -88,6 +89,13 @@ export default function Dashboard() {
                         <RefreshCw size={18} className={`${refreshing ? 'animate-spin' : ''}`} />
                         {refreshing ? '正在刷新...' : '刷新状态'}
                     </button>
+                    <Link
+                        href="/history"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white border border-slate-900 rounded-lg hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-base font-bold"
+                    >
+                        <History size={18} />
+                        更换记录
+                    </Link>
                 </div>
             </header>
 
