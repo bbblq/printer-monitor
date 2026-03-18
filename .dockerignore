@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+scripts
+*.log
+.DS_Store
+printers.db
+printers.db-shm
+printers.db-wal

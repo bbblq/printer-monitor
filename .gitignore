@@ -1,0 +1,13 @@
+.next
+node_modules
+*.log
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+test-*.js
+nul
+*.bak
+*.log

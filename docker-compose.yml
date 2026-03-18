@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  printer-monitor:
+    image: bbblq/printer-monitor:latest
+    container_name: printer-monitor
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Shanghai

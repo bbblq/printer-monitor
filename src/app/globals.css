@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* 隐藏 Next.js 开发环境的错误指示器 */
+nextjs-portal {
+  display: none !important;
+}
+
+/* 隐藏所有 Next.js 开发工具悬浮按钮 */
+[data-nextjs-dialog-overlay],
+[data-nextjs-toast],
+button[data-nextjs-errors-dialog-left-right-close-button] {
+  display: none !important;
+}
