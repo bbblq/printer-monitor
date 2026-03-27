@@ -33,6 +33,11 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
         return false;
     }
 
+    // 手动计算北京时间 (UTC+8)
+    const now = new Date();
+    const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    const timeStr = `${beijingTime.getFullYear()}/${String(beijingTime.getMonth() + 1).padStart(2, '0')}/${String(beijingTime.getDate()).padStart(2, '0')} ${String(beijingTime.getHours()).padStart(2, '0')}:${String(beijingTime.getMinutes()).padStart(2, '0')}:${String(beijingTime.getSeconds()).padStart(2, '0')}`;
+
     const card = {
         msg_type: 'interactive',
         card: {
@@ -56,7 +61,7 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
                     elements: [
                         {
                             tag: 'plain_text',
-                            content: `时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                            content: `时间: ${timeStr}`
                         }
                     ]
                 }
