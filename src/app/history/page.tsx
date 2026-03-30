@@ -288,10 +288,10 @@ export default function HistoryPage() {
                             <p className="text-slate-400 text-sm py-8 text-center">暂无记录</p>
                         ) : (
                             <div className="space-y-3">
-                                {Object.entries(byPrinter).map(([printer, records]) => (
-                                    <div key={printer} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                {Object.entries(byPrinter).map(([key, records]) => (
+                                    <div key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-slate-800 truncate">{printer}</div>
+                                            <div className="font-medium text-slate-800">{records[0].brand} {records[0].model}</div>
                                             <div className="text-xs text-slate-500">{records[0].location}</div>
                                         </div>
                                         <div className="text-lg font-bold text-blue-600">{records.length}</div>
@@ -403,7 +403,6 @@ export default function HistoryPage() {
                                             </td>
                                             <td className="py-3">
                                                 <div className="font-medium text-slate-800">{record.printer_name}</div>
-                                                <div className="text-xs text-slate-400">{record.brand} {record.model}</div>
                                             </td>
                                             <td className="py-3 text-sm text-slate-600">{record.location}</td>
                                             <td className="py-3">

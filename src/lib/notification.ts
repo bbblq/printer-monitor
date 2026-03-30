@@ -33,9 +33,12 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
         return false;
     }
 
-    // 手动计算北京时间 (UTC+8)
+    // 获取正确的北京时间
     const now = new Date();
-    const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    // 转为北京时间 (UTC+8)，无论容器时区如何设置
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const beijingOffset = 8 * 60 * 60000; // UTC+8
+    const beijingTime = new Date(utc + beijingOffset);
     const timeStr = `${beijingTime.getFullYear()}/${String(beijingTime.getMonth() + 1).padStart(2, '0')}/${String(beijingTime.getDate()).padStart(2, '0')} ${String(beijingTime.getHours()).padStart(2, '0')}:${String(beijingTime.getMinutes()).padStart(2, '0')}:${String(beijingTime.getSeconds()).padStart(2, '0')}`;
 
     const card = {
