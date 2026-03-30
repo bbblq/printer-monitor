@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Save, Settings, Image as ImageIcon, Clock, Lock } from 'lucide-react';
+import { Save, Settings, Image as ImageIcon, Clock, Lock, Tag } from 'lucide-react';
 
 export function SystemSettings() {
     const [settings, setSettings] = useState({
@@ -14,9 +14,11 @@ export function SystemSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [version, setVersion] = useState('');
 
     useEffect(() => {
         fetchSettings();
+        fetchVersion();
     }, []);
 
     const fetchSettings = async () => {
@@ -34,6 +36,16 @@ export function SystemSettings() {
             console.error('Failed to fetch settings', e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchVersion = async () => {
+        try {
+            const res = await fetch('/api/version');
+            const data = await res.json();
+            setVersion(data.version);
+        } catch (e) {
+            console.error('Failed to fetch version', e);
         }
     };
 
@@ -66,9 +78,17 @@ export function SystemSettings() {
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-            <div className="flex items-center gap-2 mb-6 text-slate-800 font-bold text-lg">
-                <Settings size={20} className="text-blue-600" />
-                <h2>系统配置</h2>
+            <div className="flex items-center justify-between mb-6 text-slate-800 font-bold text-lg">
+                <div className="flex items-center gap-2">
+                    <Settings size={20} className="text-blue-600" />
+                    <h2>系统配置</h2>
+                </div>
+                {version && (
+                    <div className="flex items-center gap-1.5 text-sm font-mono text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+                        <Tag size={14} />
+                        v{version}
+                    </div>
+                )}
             </div>
 
             <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-6">
