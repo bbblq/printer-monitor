@@ -12,6 +12,7 @@ export function initializeApp() {
     initModelRulesTable();
     seedPrinters();
     startReportScheduler();
+    startAutoRefresh();
 
     console.log('[App Init] Initialization complete');
 }
