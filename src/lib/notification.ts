@@ -1,5 +1,6 @@
 
 import db from './db';
+import { formatBeijingDateTime } from './time';
 
 interface FeishuConfig {
     webhookUrl: string;
@@ -33,16 +34,7 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
         return false;
     }
 
-    // 获取正确的北京时间
-    const now = new Date();
-    // getTimezoneOffset returns the offset from UTC to local time in minutes
-    // For UTC+8, it returns -480 (local is 480 minutes ahead of UTC)
-    // Formula: UTC = local_time - offset(minutes) = now.getTime() - (offset * 60000)
-    // Then add 8 hours for Beijing time
-    const utc = now.getTime() - (now.getTimezoneOffset() * 60000);
-    const beijingOffset = 8 * 60 * 60 * 1000; // UTC+8 in milliseconds
-    const beijingTime = new Date(utc + beijingOffset);
-    const timeStr = `${beijingTime.getFullYear()}/${String(beijingTime.getMonth() + 1).padStart(2, '0')}/${String(beijingTime.getDate()).padStart(2, '0')} ${String(beijingTime.getHours()).padStart(2, '0')}:${String(beijingTime.getMinutes()).padStart(2, '0')}:${String(beijingTime.getSeconds()).padStart(2, '0')}`;
+    const timeStr = formatBeijingDateTime();
 
     const card = {
         msg_type: 'interactive',

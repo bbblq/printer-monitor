@@ -14,16 +14,16 @@ interface HistoryRecord {
     remark: string;
     replaced_at: string;
     recorded_at: string;
-    printer_name: string;
-    brand: string;
-    model: string;
-    location: string;
+    printer_name?: string | null;
+    brand?: string | null;
+    model?: string | null;
+    location?: string | null;
+    printer_ip?: string | null;
 }
 
 export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [history, setHistory] = useState<HistoryRecord[]>([]);
-    const [printers, setPrinters] = useState<{ id: number; name: string }[]>([]);
     const [settings, setSettings] = useState({ system_title: 'Printer Monitor', system_logo: '' });
 
     // Date selector state
@@ -55,11 +55,6 @@ export default function HistoryPage() {
             const data = await res.json();
             setHistory(data);
 
-            // Fetch printers
-            const printersRes = await fetch('/api/printers');
-            const printersData = await printersRes.json();
-            setPrinters(printersData.map((p: any) => ({ id: p.id, name: p.name })));
-
             // Fetch settings
             const settingsRes = await fetch('/api/settings');
             const settingsData = await settingsRes.json();
@@ -85,7 +80,7 @@ export default function HistoryPage() {
 
     // Group by printer
     const byPrinter = history.reduce((acc, record) => {
-        const key = record.printer_name;
+        const key = getRecordPrinterName(record);
         if (!acc[key]) acc[key] = [];
         acc[key].push(record);
         return acc;
@@ -291,8 +286,8 @@ export default function HistoryPage() {
                                 {Object.entries(byPrinter).map(([key, records]) => (
                                     <div key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-slate-800">{records[0].brand} {records[0].model}</div>
-                                            <div className="text-xs text-slate-500">{records[0].location}</div>
+                                            <div className="font-medium text-slate-800">{getRecordPrinterName(records[0])}</div>
+                                            <div className="text-xs text-slate-500">{getRecordPrinterMeta(records[0])}</div>
                                         </div>
                                         <div className="text-lg font-bold text-blue-600">{records.length}</div>
                                     </div>
@@ -402,9 +397,9 @@ export default function HistoryPage() {
                                                 {formatDate(record.replaced_at || record.recorded_at)}
                                             </td>
                                             <td className="py-3">
-                                                <div className="font-medium text-slate-800">{record.printer_name}</div>
+                                                <div className="font-medium text-slate-800">{getRecordPrinterName(record)}</div>
                                             </td>
-                                            <td className="py-3 text-sm text-slate-600">{record.location}</td>
+                                            <td className="py-3 text-sm text-slate-600">{record.location?.trim() || '-'}</td>
                                             <td className="py-3">
                                                 <div className="flex items-center gap-2">
                                                     <div
@@ -434,6 +429,40 @@ export default function HistoryPage() {
             </main>
         </div>
     );
+}
+
+function getRecordPrinterName(record: HistoryRecord) {
+    const explicitName = record.printer_name?.trim();
+    if (explicitName) return explicitName;
+
+    const modelName = [record.brand, record.model]
+        .map(value => value?.trim())
+        .filter(Boolean)
+        .join(' ');
+    if (modelName) return modelName;
+
+    const location = record.location?.trim();
+    if (location) return location;
+
+    const ip = record.printer_ip?.trim();
+    if (ip) return ip;
+
+    return '未命名打印机';
+}
+
+function getRecordPrinterMeta(record: HistoryRecord) {
+    const modelName = [record.brand, record.model]
+        .map(value => value?.trim())
+        .filter(Boolean)
+        .join(' ');
+    const location = record.location?.trim();
+
+    if (modelName && modelName !== getRecordPrinterName(record) && location) {
+        return `${modelName} · ${location}`;
+    }
+    if (location && location !== getRecordPrinterName(record)) return location;
+    if (record.printer_ip?.trim()) return record.printer_ip.trim();
+    return '无位置信息';
 }
 
 function getColor(name: string) {

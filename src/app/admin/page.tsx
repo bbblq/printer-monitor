@@ -202,6 +202,7 @@ export default function AdminDashboard() {
                             <tr>
                                 <th className="px-6 py-4 w-12">排序</th>
                                 <th className="px-6 py-4">状态</th>
+                                <th className="px-6 py-4">名称</th>
                                 <th className="px-6 py-4">位置</th>
                                 <th className="px-6 py-4">品牌</th>
                                 <th className="px-6 py-4">型号</th>
@@ -212,7 +213,7 @@ export default function AdminDashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan={8} className="p-8 text-center text-slate-400">正在加载...</td></tr>
+                                <tr><td colSpan={9} className="p-8 text-center text-slate-400">正在加载...</td></tr>
                             ) : printers.map((p, index) => (
                                 <tr
                                     key={p.id}
@@ -259,6 +260,7 @@ export default function AdminDashboard() {
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex h-2.5 w-2.5 rounded-full ${p.is_online ? 'bg-emerald-500' : 'bg-red-500'}`} title={p.is_online ? 'Online' : 'Offline'} />
                                     </td>
+                                    <td className="px-6 py-4 font-medium text-slate-800">{p.name}</td>
                                     <td className="px-6 py-4 font-medium text-slate-800">{p.location}</td>
                                     <td className="px-6 py-4 text-slate-600">{p.brand}</td>
                                     <td className="px-6 py-4 text-slate-600 font-mono">{p.model}</td>
@@ -290,7 +292,7 @@ export default function AdminDashboard() {
                                 </tr>
                             ))}
                             {!loading && printers.length === 0 && (
-                                <tr><td colSpan={8} className="p-12 text-center text-slate-500 italic">暂无打印机，请添加。</td></tr>
+                                <tr><td colSpan={9} className="p-12 text-center text-slate-500 italic">暂无打印机，请添加。</td></tr>
                             )}
                         </tbody>
                     </table>

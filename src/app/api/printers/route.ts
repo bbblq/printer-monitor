@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     const body = await request.json();
-    const { name, brand, model, ip, location } = body;
+    const { name, brand, model, ip, location, consumable_model } = body;
 
     if (!ip || !brand) {
         return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
@@ -37,9 +37,10 @@ export async function POST(request: Request) {
     }
 
     try {
-        addPrinter({ name, brand, model, ip, location });
+        addPrinter({ name, brand, model, ip, location, consumable_model });
         return NextResponse.json({ success: true });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to add printer';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

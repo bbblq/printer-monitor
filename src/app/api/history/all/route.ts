@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { printerDisplayNameSql } from '@/lib/printerName';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -7,7 +8,7 @@ export async function GET(request: Request) {
     const month = searchParams.get('month');
 
     let dateFilter = '';
-    const params: any[] = [];
+    const params: string[] = [];
 
     if (year && month) {
         // Filter by specific month
@@ -23,12 +24,13 @@ export async function GET(request: Request) {
     const history = db.prepare(`
         SELECT 
             h.*,
-            p.name as printer_name,
+            ${printerDisplayNameSql('p')} as printer_name,
             p.brand,
             p.model,
-            p.location
+            p.location,
+            p.ip as printer_ip
         FROM supplies_history h
-        JOIN printers p ON h.printer_id = p.id
+        LEFT JOIN printers p ON h.printer_id = p.id
         ${dateFilter}
         ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
     `).all(...params);

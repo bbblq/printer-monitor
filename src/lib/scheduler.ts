@@ -1,6 +1,7 @@
 
 import { getFeishuConfig, sendFeishuCard } from './notification';
 import { generateDailyReport } from './report';
+import { getBeijingClock, getBeijingDateKey } from './time';
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 let lastSentDate: string | null = null; // 记录上次发送的日期 (YYYY-MM-DD)
@@ -15,14 +16,8 @@ export function startReportScheduler() {
             const config = getFeishuConfig();
             if (!config.enabled || !config.notifyDaily) return;
 
-            const now = new Date();
-            // 强制使用北京时间 (UTC+8)
-            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            const beijingTime = new Date(utc + (3600000 * 8));
-
-            const currentHour = beijingTime.getHours();
-            const currentMinute = beijingTime.getMinutes();
-            const currentDate = beijingTime.toISOString().split('T')[0]; // YYYY-MM-DD
+            const { hour: currentHour, minute: currentMinute } = getBeijingClock();
+            const currentDate = getBeijingDateKey();
 
             const [targetHour, targetMinute] = (config.dailyTime || '09:00').split(':').map(Number);
 

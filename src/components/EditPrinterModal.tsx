@@ -15,6 +15,7 @@ export function EditPrinterModal({ isOpen, printer, onClose, onUpdated }: EditPr
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
+        name: '',
         brand: '',
         model: '',
         ip: '',
@@ -25,6 +26,7 @@ export function EditPrinterModal({ isOpen, printer, onClose, onUpdated }: EditPr
     useEffect(() => {
         if (printer) {
             setFormData({
+                name: printer.name || '',
                 brand: printer.brand || '',
                 model: printer.model || '',
                 ip: printer.ip || '',
@@ -96,6 +98,20 @@ export function EditPrinterModal({ isOpen, printer, onClose, onUpdated }: EditPr
                     )}
 
                     <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">打印机名称</label>
+                            <div className="relative">
+                                <PrinterIcon className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                                <input
+                                    name="name"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                                    placeholder="不填则自动使用品牌和型号"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                        </div>
+
                         {/* Brand & Model */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>

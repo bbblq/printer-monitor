@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { printerDisplayNameSql } from '@/lib/printerName';
 
 export async function GET() {
     try {
@@ -8,7 +9,7 @@ export async function GET() {
             SELECT 
                 h.id,
                 h.printer_id,
-                p.name as printer_name,
+                ${printerDisplayNameSql('p')} as printer_name,
                 p.ip as printer_ip,
                 p.location as printer_location,
                 p.model as printer_model,
@@ -30,7 +31,8 @@ export async function GET() {
                 'Content-Disposition': `attachment; filename="consumables_history_${new Date().toISOString().split('T')[0]}.json"`
             }
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Export failed';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

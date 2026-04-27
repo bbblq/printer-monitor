@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { printerDisplayNameSql } from './printerName';
 
 const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'printers.db');
 
@@ -16,7 +17,7 @@ function getDb(): Database.Database {
 const db = {
   prepare: (sql: string) => getDb().prepare(sql),
   exec: (sql: string) => getDb().exec(sql),
-  transaction: (fn: any) => getDb().transaction(fn),
+  transaction: <Args extends unknown[], Return>(fn: (...args: Args) => Return) => getDb().transaction(fn),
   pragma: (sql: string) => getDb().pragma(sql),
 };
 
@@ -91,6 +92,13 @@ try {
 } catch (e) {
   // 字段已存在，忽略错误
 }
+
+// 补齐旧数据里为空的打印机名称，避免历史明细、导出和通知显示空白。
+db.exec(`
+  UPDATE printers
+  SET name = ${printerDisplayNameSql('')}
+  WHERE name IS NULL OR TRIM(name) = ''
+`);
 
 
 export default db;

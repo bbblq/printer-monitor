@@ -1,6 +1,7 @@
 import db from './db';
 import { fetchPrinterStatus } from './snmp';
 import { sendFeishuCard, getFeishuConfig } from './notification';
+import { getPrinterDisplayName } from './printerName';
 
 
 export type Printer = {
@@ -45,7 +46,7 @@ export function seedPrinters() {
 
     if (count === 0) {
         const insert = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model) VALUES (@location, @brand, @model, @ip, @name, @consumable_model)');
-        const insertMany = db.transaction((printers: any[]) => {
+        const insertMany = db.transaction((printers: typeof INITIAL_PRINTERS) => {
             for (const p of printers) {
                 insert.run({ ...p, name: `${p.brand} ${p.model}`, consumable_model: '' });
             }
@@ -55,12 +56,17 @@ export function seedPrinters() {
 }
 
 export function getAllPrinters() {
-    return db.prepare(`
+    const printers = db.prepare(`
     SELECT p.*, COALESCE(s.status, 'Unknown') as status, COALESCE(s.is_online, 0) as is_online, s.last_updated
     FROM printers p
     LEFT JOIN printer_status s ON p.id = s.printer_id
     ORDER BY p.display_order ASC, p.id ASC
   `).all() as (Printer & PrinterStatus)[];
+
+    return printers.map(printer => ({
+        ...printer,
+        name: getPrinterDisplayName(printer)
+    }));
 }
 
 export function getPrinterSupplies(printerId: number) {
@@ -69,14 +75,33 @@ export function getPrinterSupplies(printerId: number) {
 
 export function addPrinter(data: Omit<Printer, 'id' | 'added_at'>) {
     const stmt = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model) VALUES (@location, @brand, @model, @ip, @name, @consumable_model)');
-    return stmt.run({ ...data, consumable_model: data.consumable_model || '' });
+    return stmt.run({
+        ...data,
+        name: getPrinterDisplayName(data),
+        consumable_model: data.consumable_model || ''
+    });
 }
 
 export function updatePrinter(id: number, data: Partial<Printer>) {
-    const fields = Object.keys(data).filter(k => k !== 'id' && k !== 'added_at').map(k => `${k} = @${k}`).join(', ');
+    const nextData = { ...data };
+
+    if ('name' in nextData) {
+        nextData.name = getPrinterDisplayName(nextData);
+    } else if ('brand' in nextData || 'model' in nextData || 'location' in nextData || 'ip' in nextData) {
+        const current = db.prepare('SELECT name, brand, model, location, ip FROM printers WHERE id = ?').get(id) as Partial<Printer> | undefined;
+        if (current) {
+            const currentAutoName = getPrinterDisplayName({ ...current, name: '' });
+            const currentName = current.name?.trim();
+            if (!currentName || currentName === currentAutoName) {
+                nextData.name = getPrinterDisplayName({ ...current, ...nextData, name: '' });
+            }
+        }
+    }
+
+    const fields = Object.keys(nextData).filter(k => k !== 'id' && k !== 'added_at').map(k => `${k} = @${k}`).join(', ');
     if (!fields) return;
     const stmt = db.prepare(`UPDATE printers SET ${fields} WHERE id = @id`);
-    return stmt.run({ ...data, id });
+    return stmt.run({ ...nextData, id });
 }
 
 export function deletePrinter(id: number) {
@@ -118,7 +143,8 @@ export function deleteReplacementHistory(id: number) {
 }
 
 export async function refreshAllPrinters() {
-    const printers = db.prepare('SELECT * FROM printers').all() as Printer[];
+    const printers = (db.prepare('SELECT * FROM printers').all() as Printer[])
+        .map(printer => ({ ...printer, name: getPrinterDisplayName(printer) }));
     const feishu = getFeishuConfig();
 
     const refreshPrinter = async (p: Printer) => {

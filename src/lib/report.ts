@@ -1,4 +1,11 @@
 import db from './db';
+import { printerDisplayNameSql } from './printerName';
+import {
+    formatBeijingDate,
+    formatDbTimestampAsBeijingMonthDayTime,
+    getCurrentBeijingMonthRangeUtc,
+    getCurrentBeijingYearRangeUtc,
+} from './time';
 
 export interface PrinterInfo {
     id: number;
@@ -19,10 +26,17 @@ export interface SupplyInfo {
     percent: number;
 }
 
+type SupplyRow = {
+    color: string;
+    level: number;
+    max_capacity: number;
+};
+
 export interface ReplacementInfo {
     id: number;
     printer_id: number;
     printer_name: string;
+    printer_location: string | null;
     color: string;
     level: number;
     replaced_at: string;
@@ -31,7 +45,15 @@ export interface ReplacementInfo {
 
 export function getAllPrinters(): PrinterInfo[] {
     return db.prepare(`
-        SELECT p.*, COALESCE(s.status, 'Unknown') as status, COALESCE(s.is_online, 0) as is_online
+        SELECT
+            p.id,
+            ${printerDisplayNameSql('p')} as name,
+            p.brand,
+            p.model,
+            p.location,
+            p.ip,
+            COALESCE(s.status, 'Unknown') as status,
+            COALESCE(s.is_online, 0) as is_online
         FROM printers p
         LEFT JOIN printer_status s ON p.id = s.printer_id
         ORDER BY p.display_order ASC, p.id ASC
@@ -43,7 +65,7 @@ export function getAllSupplies(): SupplyInfo[] {
     const supplies: SupplyInfo[] = [];
 
     for (const p of printers) {
-        const rows = db.prepare('SELECT * FROM supplies_current WHERE printer_id = ?').all(p.id) as any[];
+        const rows = db.prepare('SELECT * FROM supplies_current WHERE printer_id = ?').all(p.id) as SupplyRow[];
         for (const row of rows) {
             const percent = row.max_capacity > 0 ? Math.round((row.level / row.max_capacity) * 100) : 0;
             supplies.push({
@@ -59,38 +81,50 @@ export function getAllSupplies(): SupplyInfo[] {
 }
 
 export function getReplacementsByMonth(): ReplacementInfo[] {
+    const range = getCurrentBeijingMonthRangeUtc();
+
     return db.prepare(`
-        SELECT h.*, p.name as printer_name
+        SELECT h.*, ${printerDisplayNameSql('p')} as printer_name, p.location as printer_location
         FROM supplies_history h
         JOIN printers p ON h.printer_id = p.id
-        WHERE h.source = 'auto' AND COALESCE(h.replaced_at, h.recorded_at) >= datetime('now', 'start of month')
+        WHERE h.source = 'auto'
+            AND COALESCE(h.replaced_at, h.recorded_at) >= ?
+            AND COALESCE(h.replaced_at, h.recorded_at) < ?
         ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
-    `).all() as ReplacementInfo[];
+    `).all(range.start, range.end) as ReplacementInfo[];
 }
 
 export function getReplacementsByYear(): ReplacementInfo[] {
+    const range = getCurrentBeijingYearRangeUtc();
+
     return db.prepare(`
-        SELECT h.*, p.name as printer_name
+        SELECT h.*, ${printerDisplayNameSql('p')} as printer_name, p.location as printer_location
         FROM supplies_history h
         JOIN printers p ON h.printer_id = p.id
-        WHERE h.source = 'auto' AND COALESCE(h.replaced_at, h.recorded_at) >= datetime('now', 'start of year')
+        WHERE h.source = 'auto'
+            AND COALESCE(h.replaced_at, h.recorded_at) >= ?
+            AND COALESCE(h.replaced_at, h.recorded_at) < ?
         ORDER BY COALESCE(h.replaced_at, h.recorded_at) DESC
-    `).all() as ReplacementInfo[];
+    `).all(range.start, range.end) as ReplacementInfo[];
 }
 
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-    return `${beijingTime.getMonth() + 1}/${beijingTime.getDate()} ${beijingTime.getHours().toString().padStart(2, '0')}:${beijingTime.getMinutes().toString().padStart(2, '0')}`;
+function formatPrinterLabel(printer: { name?: string | null; location?: string | null }): string {
+    const name = printer.name?.trim() || '未命名打印机';
+    const location = printer.location?.trim();
+
+    if (location && location !== name) {
+        return `${name} (${location})`;
+    }
+
+    return name;
 }
 
 export function generateDailyReport(): string {
     const printers = getAllPrinters();
     const supplies = getAllSupplies();
-    const today = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    const today = formatBeijingDate();
 
     const monthReplacements = getReplacementsByMonth();
-    const yearReplacements = getReplacementsByYear();
 
     // 耗材不足（低于10%）
     const lowSupplies = supplies.filter(s => s.percent > 0 && s.percent <= 10);
@@ -106,7 +140,7 @@ export function generateDailyReport(): string {
     report += `总计: ${printers.length} 台 | 🟢 在线: ${onlinePrinters.length} | 🔴 离线: ${offlinePrinters.length}\n`;
     if (offlinePrinters.length > 0) {
         offlinePrinters.forEach(p => {
-            report += `  - ${p.name} (${p.location})\n`;
+            report += `  - ${formatPrinterLabel(p)}\n`;
         });
     }
 
@@ -116,7 +150,7 @@ export function generateDailyReport(): string {
     } else {
         for (const r of monthReplacements) {
             const displayDate = r.replaced_at || r.recorded_at;
-            report += `- ${displayDate ? displayDate.substring(5, 16) : '未知时间'} ${r.printer_name} ${r.color}\n`;
+            report += `- ${formatDbTimestampAsBeijingMonthDayTime(displayDate)} ${formatPrinterLabel({ name: r.printer_name, location: r.printer_location })} ${r.color}\n`;
         }
     }
 
@@ -127,7 +161,7 @@ export function generateDailyReport(): string {
         for (const s of lowSupplies) {
             const printer = printers.find(p => p.id === s.printer_id);
             const emoji = s.percent <= 5 ? '🔴' : '🟡';
-            report += `${emoji} ${printer?.name || '未知'} ${s.color} **${s.percent}%**\n`;
+            report += `${emoji} ${printer ? formatPrinterLabel(printer) : '未知打印机'} ${s.color} **${s.percent}%**\n`;
         }
     }
 
