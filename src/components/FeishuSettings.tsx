@@ -11,7 +11,8 @@ export function FeishuSettings() {
         notify_low: true,
         notify_replacement: true,
         notify_daily: false,
-        daily_time: '09:00'
+        daily_time: '09:00',
+        footer_url: ''
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -25,10 +26,11 @@ export function FeishuSettings() {
                 setConfig({
                     webhook: data.feishu_webhook_url || '',
                     enabled: data.feishu_enabled === '1',
-                    notify_low: data.feishu_notify_low !== '0', // Default true unless explicitly '0'
+                    notify_low: data.feishu_notify_low !== '0',
                     notify_replacement: data.feishu_notify_replacement !== '0',
                     notify_daily: data.feishu_notify_daily === '1',
-                    daily_time: data.feishu_daily_time || '09:00'
+                    daily_time: data.feishu_daily_time || '09:00',
+                    footer_url: data.feishu_footer_url || ''
                 });
                 setLoading(false);
             });
@@ -43,7 +45,8 @@ export function FeishuSettings() {
                 feishu_notify_low: config.notify_low ? '1' : '0',
                 feishu_notify_replacement: config.notify_replacement ? '1' : '0',
                 feishu_notify_daily: config.notify_daily ? '1' : '0',
-                feishu_daily_time: config.daily_time
+                feishu_daily_time: config.daily_time,
+                feishu_footer_url: config.footer_url
             };
 
             const res = await fetch('/api/admin/settings', {
@@ -212,6 +215,19 @@ export function FeishuSettings() {
                             />
                         </div>
                     )}
+
+                    {/* 底部链接 URL */}
+                    <div className="pt-4 border-t border-slate-100">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">通知底部「查看详情」链接</label>
+                        <input
+                            type="url"
+                            value={config.footer_url}
+                            onChange={(e) => setConfig({ ...config, footer_url: e.target.value })}
+                            placeholder="https://your-printer-monitor.example.com"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">设置后通知卡片底部会显示「查看详情」按钮，点击跳转到此地址</p>
+                    </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

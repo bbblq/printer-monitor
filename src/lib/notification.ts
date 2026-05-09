@@ -9,6 +9,7 @@ interface FeishuConfig {
     notifyReplacement: boolean;
     notifyDaily: boolean;
     dailyTime: string;
+    footerUrl: string;
 }
 
 export function getFeishuConfig(): FeishuConfig {
@@ -20,10 +21,11 @@ export function getFeishuConfig(): FeishuConfig {
     return {
         webhookUrl: config.feishu_webhook_url || '',
         enabled: config.feishu_enabled === '1',
-        notifyLow: config.feishu_notify_low !== '0', // Default true
-        notifyReplacement: config.feishu_notify_replacement !== '0', // Default true
-        notifyDaily: config.feishu_notify_daily === '1', // Default false
+        notifyLow: config.feishu_notify_low !== '0',
+        notifyReplacement: config.feishu_notify_replacement !== '0',
+        notifyDaily: config.feishu_notify_daily === '1',
         dailyTime: config.feishu_daily_time || '09:00',
+        footerUrl: config.feishu_footer_url || ''
     };
 }
 
@@ -34,7 +36,42 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
         return false;
     }
 
-    const timeStr = formatBeijingDateTime();
+const timeStr = formatBeijingDateTime();
+
+    const elements: any[] = [
+        {
+            tag: 'div',
+            text: {
+                tag: 'lark_md',
+                content: markdownContent
+            }
+        },
+        {
+            tag: 'note',
+            elements: [
+                {
+                    tag: 'plain_text',
+                    content: `时间: ${timeStr}`
+                }
+            ]
+        }
+    ];
+
+    if (config.footerUrl) {
+        elements.push({
+            tag: 'action',
+            elements: [
+                {
+                    tag: 'a',
+                    text: {
+                        tag: 'plain_text',
+                        content: '🔗 查看详情'
+                    },
+                    href: config.footerUrl
+                }
+            ]
+        });
+    }
 
     const card = {
         msg_type: 'interactive',
@@ -46,24 +83,7 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
                 },
                 template: color
             },
-            elements: [
-                {
-                    tag: 'div',
-                    text: {
-                        tag: 'lark_md',
-                        content: markdownContent
-                    }
-                },
-                {
-                    tag: 'note',
-                    elements: [
-                        {
-                            tag: 'plain_text',
-                            content: `时间: ${timeStr}`
-                        }
-                    ]
-                }
-            ]
+            elements
         }
     };
 
