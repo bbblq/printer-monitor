@@ -60,11 +60,8 @@ const timeStr = formatBeijingDateTime();
     if (config.footerUrl) {
         elements.push({
             tag: 'a',
-            text: {
-                tag: 'plain_text',
-                content: '🔗 查看详情'
-            },
-            href: config.footerUrl
+            href: config.footerUrl,
+            text: '🔗 查看详情'
         });
     }
 
