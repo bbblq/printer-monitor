@@ -59,17 +59,12 @@ const timeStr = formatBeijingDateTime();
 
     if (config.footerUrl) {
         elements.push({
-            tag: 'action',
-            elements: [
-                {
-                    tag: 'a',
-                    text: {
-                        tag: 'plain_text',
-                        content: '🔗 查看详情'
-                    },
-                    href: config.footerUrl
-                }
-            ]
+            tag: 'a',
+            text: {
+                tag: 'plain_text',
+                content: '🔗 查看详情'
+            },
+            href: config.footerUrl
         });
     }
 

@@ -105,7 +105,8 @@ export default db;
 
 export function seedDefaultSettings() {
   const seedSettings = (key: string, value: string) => {
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key, value);
+    // Only insert if key doesn't exist, don't overwrite existing values
+    db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(key, value);
   };
 
   seedSettings('system_title', 'Printer Monitor');
