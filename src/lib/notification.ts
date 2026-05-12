@@ -45,17 +45,28 @@ const timeStr = formatBeijingDateTime();
                 tag: 'lark_md',
                 content: markdownContent
             }
-        },
-        {
-            tag: 'note',
-            elements: [
-                {
-                    tag: 'plain_text',
-                    content: `时间: ${timeStr}`
-                }
-            ]
         }
     ];
+
+    if (config.footerUrl) {
+        elements.push({
+            tag: 'div',
+            text: {
+                tag: 'lark_md',
+                content: `[🔗 View Dashboard](${config.footerUrl})`
+            }
+        });
+    }
+
+    elements.push({
+        tag: 'note',
+        elements: [
+            {
+                tag: 'plain_text',
+                content: `时间: ${timeStr}`
+            }
+        ]
+    });
 
     const card = {
         msg_type: 'interactive',
