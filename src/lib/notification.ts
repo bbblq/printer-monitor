@@ -57,14 +57,6 @@ const timeStr = formatBeijingDateTime();
         }
     ];
 
-    if (config.footerUrl) {
-        elements.push({
-            tag: 'a',
-            href: config.footerUrl,
-            text: '🔗 查看详情'
-        });
-    }
-
     const card = {
         msg_type: 'interactive',
         card: {
