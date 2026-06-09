@@ -3,7 +3,7 @@
 import React from 'react';
 import { Printer } from '@/lib/types';
 import { SupplyBar } from './SupplyBar';
-import { AlertCircle, History } from 'lucide-react';
+import { AlertCircle, History, Download } from 'lucide-react';
 
 interface PrinterCardProps {
     printer: Printer;
@@ -50,6 +50,17 @@ export function PrinterCard({ printer, onViewHistory }: PrinterCardProps) {
                             </div>
                         )}
                     </div>
+                    {printer.driver_url && (
+                        <a
+                            href={printer.driver_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 text-xs font-bold rounded-md border border-blue-200 transition-all active:scale-95"
+                        >
+                            <Download size={14} />
+                            下载驱动
+                        </a>
+                    )}
                 </div>
                 {/* Status indicator */}
                 <div className="flex flex-col items-end gap-2">

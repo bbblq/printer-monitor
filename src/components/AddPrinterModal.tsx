@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Plus, Server, MapPin, Tag, Box, Printer as PrinterIcon } from 'lucide-react';
+import { X, Plus, Server, MapPin, Tag, Box, Printer as PrinterIcon, Link as LinkIcon } from 'lucide-react';
 
 interface AddPrinterModalProps {
     isOpen: boolean; // Added for correct visibility control in parent
@@ -18,7 +18,8 @@ export function AddPrinterModal({ isOpen, onClose, onAdd }: AddPrinterModalProps
         ip: '',
         location: '',
         name: '', // optional
-        consumable_model: ''
+        consumable_model: '',
+        driver_url: ''
     });
 
     if (!isOpen) return null;
@@ -43,7 +44,7 @@ export function AddPrinterModal({ isOpen, onClose, onAdd }: AddPrinterModalProps
             onAdd();
             onClose();
             // Reset form
-            setFormData({ brand: '', model: '', ip: '', location: '', name: '', consumable_model: '' });
+            setFormData({ brand: '', model: '', ip: '', location: '', name: '', consumable_model: '', driver_url: '' });
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -169,6 +170,22 @@ export function AddPrinterModal({ isOpen, onClose, onAdd }: AddPrinterModalProps
                                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-300"
                                     placeholder="例如 MP C3503"
                                     value={formData.consumable_model}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Driver URL */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">驱动下载地址 (选填)</label>
+                            <div className="relative">
+                                <LinkIcon className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                                <input
+                                    name="driver_url"
+                                    type="url"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                    placeholder="https://example.com/driver.exe"
+                                    value={formData.driver_url}
                                     onChange={handleChange}
                                 />
                             </div>

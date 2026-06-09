@@ -14,6 +14,7 @@ export interface Printer {
     ip: string;
     location: string;
     consumable_model?: string;
+    driver_url?: string;
     display_order?: number;
     status: string;
     is_online: number;

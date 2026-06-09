@@ -10,6 +10,7 @@ type ImportedPrinter = {
     location?: string | null;
     display_order?: number | null;
     consumable_model?: string | null;
+    driver_url?: string | null;
 };
 
 export async function POST(req: Request) {
@@ -21,15 +22,16 @@ export async function POST(req: Request) {
         }
 
         const upsertByIp = db.prepare(`
-            INSERT INTO printers (name, brand, model, ip, location, display_order, consumable_model)
-            VALUES (@name, @brand, @model, @ip, @location, @display_order, @consumable_model)
+            INSERT INTO printers (name, brand, model, ip, location, display_order, consumable_model, driver_url)
+            VALUES (@name, @brand, @model, @ip, @location, @display_order, @consumable_model, @driver_url)
             ON CONFLICT(ip) DO UPDATE SET
                 name = excluded.name,
                 brand = excluded.brand,
                 model = excluded.model,
                 location = excluded.location,
                 display_order = excluded.display_order,
-                consumable_model = excluded.consumable_model
+                consumable_model = excluded.consumable_model,
+                driver_url = excluded.driver_url
         `);
 
         const safeTransaction = db.transaction((items: ImportedPrinter[]) => {
@@ -44,7 +46,8 @@ export async function POST(req: Request) {
                     ip,
                     location: item.location || '',
                     display_order: item.display_order || 0,
-                    consumable_model: item.consumable_model || ''
+                    consumable_model: item.consumable_model || '',
+                    driver_url: item.driver_url || ''
                 });
             }
         });

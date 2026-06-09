@@ -44,11 +44,18 @@ export function seedPrinters() {
         // Column likely exists, ignore
     }
 
+    // Auto-migration for driver_url column
+    try {
+        db.prepare('ALTER TABLE printers ADD COLUMN driver_url TEXT').run();
+    } catch (e) {
+        // Column likely exists, ignore
+    }
+
     if (count === 0) {
-        const insert = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model) VALUES (@location, @brand, @model, @ip, @name, @consumable_model)');
+        const insert = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model, driver_url) VALUES (@location, @brand, @model, @ip, @name, @consumable_model, @driver_url)');
         const insertMany = db.transaction((printers: typeof INITIAL_PRINTERS) => {
             for (const p of printers) {
-                insert.run({ ...p, name: `${p.brand} ${p.model}`, consumable_model: '' });
+                insert.run({ ...p, name: `${p.brand} ${p.model}`, consumable_model: '', driver_url: '' });
             }
         });
         insertMany(INITIAL_PRINTERS);
@@ -74,11 +81,12 @@ export function getPrinterSupplies(printerId: number) {
 }
 
 export function addPrinter(data: Omit<Printer, 'id' | 'added_at'>) {
-    const stmt = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model) VALUES (@location, @brand, @model, @ip, @name, @consumable_model)');
+    const stmt = db.prepare('INSERT INTO printers (location, brand, model, ip, name, consumable_model, driver_url) VALUES (@location, @brand, @model, @ip, @name, @consumable_model, @driver_url)');
     return stmt.run({
         ...data,
         name: getPrinterDisplayName(data),
-        consumable_model: data.consumable_model || ''
+        consumable_model: data.consumable_model || '',
+        driver_url: data.driver_url || ''
     });
 }
 
