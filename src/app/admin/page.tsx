@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trash2, Plus, Monitor, LogOut, Edit, ArrowUp, ArrowDown, History, Download, Upload } from 'lucide-react';
+import { Trash2, Plus, Monitor, LogOut, Edit, ArrowUp, ArrowDown, History, Download, Upload, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { AddPrinterModal } from '@/components/AddPrinterModal';
@@ -91,7 +91,11 @@ export default function AdminDashboard() {
         router.push('/admin/login');
     };
 
+    const [exporting, setExporting] = useState(false);
+
     const handleExport = async () => {
+        if (exporting) return;
+        setExporting(true);
         try {
             const res = await fetch('/api/admin/export');
             if (!res.ok) throw new Error('导出失败');
@@ -106,10 +110,14 @@ export default function AdminDashboard() {
             window.URL.revokeObjectURL(url);
         } catch (e: any) {
             alert('导出失败: ' + (e.message || '未知错误'));
+        } finally {
+            setExporting(false);
         }
     };
 
     const handleExportHistory = async () => {
+        if (exporting) return;
+        setExporting(true);
         try {
             const res = await fetch('/api/admin/export-history');
             if (!res.ok) throw new Error('导出失败');
@@ -125,6 +133,8 @@ export default function AdminDashboard() {
             window.URL.revokeObjectURL(url);
         } catch (e: any) {
             alert('导出失败: ' + (e.message || '未知错误'));
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -198,17 +208,19 @@ export default function AdminDashboard() {
                     <div className="flex gap-2">
                         <button
                             onClick={handleExportHistory}
-                            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                            disabled={exporting}
+                            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            <History size={18} />
-                            导出更换记录
+                            {exporting ? <Loader2 size={18} className="animate-spin" /> : <History size={18} />}
+                            {exporting ? '导出中...' : '导出更换记录'}
                         </button>
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                            disabled={exporting}
+                            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            <Download size={18} />
-                            导出设备
+                            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                            {exporting ? '导出中...' : '导出设备'}
                         </button>
                         <label className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all cursor-pointer">
                             <Upload size={18} />
