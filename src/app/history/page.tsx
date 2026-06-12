@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Monitor, History, ChevronLeft, ChevronRight, Droplet, Printer, Calendar, ArrowLeft } from 'lucide-react';
+import { Monitor, History, ChevronLeft, ChevronRight, Droplet, Printer, Calendar, ArrowLeft, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 interface HistoryRecord {
     id: number;
@@ -25,6 +25,7 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [history, setHistory] = useState<HistoryRecord[]>([]);
     const [settings, setSettings] = useState({ system_title: 'Printer Monitor', system_logo: '' });
+    const [exporting, setExporting] = useState(false);
 
     // Date selector state
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
@@ -75,6 +76,34 @@ export default function HistoryPage() {
     useEffect(() => {
         fetchData();
     }, [selectedYear, selectedMonth, yearOnly]);
+
+    const handleExportExcel = async () => {
+        if (exporting || history.length === 0) return;
+        setExporting(true);
+        try {
+            const url = yearOnly
+                ? `/api/history/export-excel?year=${selectedYear}`
+                : `/api/history/export-excel?year=${selectedYear}&month=${selectedMonth}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('导出失败');
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            const fileName = yearOnly
+                ? `耗材更换记录_${selectedYear}年.xlsx`
+                : `耗材更换记录_${selectedYear}年${selectedMonth}月.xlsx`;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (e: any) {
+            alert('导出失败: ' + (e.message || '未知错误'));
+        } finally {
+            setExporting(false);
+        }
+    };
 
     // Statistics
     const totalCount = history.length;
@@ -390,10 +419,21 @@ export default function HistoryPage() {
 
                 {/* Detailed List */}
                 <div className="mt-6 bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <History size={18} className="text-slate-400" />
-                        更换明细
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <History size={18} className="text-slate-400" />
+                            更换明细
+                            <span className="text-xs font-medium text-slate-400 ml-1">({totalCount} 条)</span>
+                        </h3>
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={exporting || history.length === 0}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 text-sm font-bold rounded-md border border-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {exporting ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
+                            {exporting ? '导出中...' : '导出 Excel'}
+                        </button>
+                    </div>
                     {loading ? (
                         <div className="animate-pulse space-y-3">
                             {[1, 2, 3, 4, 5].map(i => (
