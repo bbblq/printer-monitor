@@ -91,12 +91,41 @@ export default function AdminDashboard() {
         router.push('/admin/login');
     };
 
-    const handleExport = () => {
-        window.location.href = '/api/admin/export';
+    const handleExport = async () => {
+        try {
+            const res = await fetch('/api/admin/export');
+            if (!res.ok) throw new Error('导出失败');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'printers_export.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (e: any) {
+            alert('导出失败: ' + (e.message || '未知错误'));
+        }
     };
 
-    const handleExportHistory = () => {
-        window.location.href = '/api/admin/export-history';
+    const handleExportHistory = async () => {
+        try {
+            const res = await fetch('/api/admin/export-history');
+            if (!res.ok) throw new Error('导出失败');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const date = new Date().toISOString().split('T')[0];
+            a.download = `consumables_history_${date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (e: any) {
+            alert('导出失败: ' + (e.message || '未知错误'));
+        }
     };
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
