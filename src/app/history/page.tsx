@@ -29,6 +29,7 @@ export default function HistoryPage() {
     // Date selector state
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1);
+    const [yearOnly, setYearOnly] = useState(false);
 
     // Available years (current year and 2 years back)
     const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i);
@@ -51,7 +52,10 @@ export default function HistoryPage() {
         setLoading(true);
         try {
             // Fetch history
-            const res = await fetch(`/api/history/all?year=${selectedYear}&month=${selectedMonth}`);
+            const url = yearOnly
+                ? `/api/history/all?year=${selectedYear}`
+                : `/api/history/all?year=${selectedYear}&month=${selectedMonth}`;
+            const res = await fetch(url);
             const data = await res.json();
             setHistory(data);
 
@@ -70,7 +74,7 @@ export default function HistoryPage() {
 
     useEffect(() => {
         fetchData();
-    }, [selectedYear, selectedMonth]);
+    }, [selectedYear, selectedMonth, yearOnly]);
 
     // Statistics
     const totalCount = history.length;
@@ -116,8 +120,10 @@ export default function HistoryPage() {
         }
     };
 
-    const goToPrevMonth = () => {
-        if (selectedMonth === 1) {
+    const goToPrev = () => {
+        if (yearOnly) {
+            setSelectedYear(selectedYear - 1);
+        } else if (selectedMonth === 1) {
             setSelectedMonth(12);
             setSelectedYear(selectedYear - 1);
         } else {
@@ -125,8 +131,11 @@ export default function HistoryPage() {
         }
     };
 
-    const goToNextMonth = () => {
-        if (selectedMonth === 12) {
+    const goToNext = () => {
+        const now = new Date();
+        if (yearOnly) {
+            if (selectedYear < now.getFullYear()) setSelectedYear(selectedYear + 1);
+        } else if (selectedMonth === 12) {
             setSelectedMonth(1);
             setSelectedYear(selectedYear + 1);
         } else {
@@ -134,8 +143,9 @@ export default function HistoryPage() {
         }
     };
 
-    const isCurrentMonth = () => {
+    const isAtLatest = () => {
         const now = new Date();
+        if (yearOnly) return selectedYear >= now.getFullYear();
         return selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
     };
 
@@ -174,10 +184,10 @@ export default function HistoryPage() {
 
             {/* Date Selector */}
             <div className="bg-white border-b border-slate-200 px-6 py-4">
-                <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="max-w-[1600px] mx-auto flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <button
-                            onClick={goToPrevMonth}
+                            onClick={goToPrev}
                             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                         >
                             <ChevronLeft size={20} className="text-slate-600" />
@@ -192,23 +202,39 @@ export default function HistoryPage() {
                                     <option key={year} value={year}>{year}年</option>
                                 ))}
                             </select>
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                {months.map(m => (
-                                    <option key={m.value} value={m.value}>{m.label}</option>
-                                ))}
-                            </select>
+                            {!yearOnly && (
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                    className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    {months.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                         <button
-                            onClick={goToNextMonth}
-                            disabled={isCurrentMonth()}
+                            onClick={goToNext}
+                            disabled={isAtLatest()}
                             className="p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                             <ChevronRight size={20} className="text-slate-600" />
                         </button>
+                        <div className="ml-2 inline-flex bg-slate-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setYearOnly(false)}
+                                className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${!yearOnly ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                按月
+                            </button>
+                            <button
+                                onClick={() => setYearOnly(true)}
+                                className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${yearOnly ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                整年
+                            </button>
+                        </div>
                     </div>
 
                     <button
@@ -332,7 +358,7 @@ export default function HistoryPage() {
                     <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                         <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <Calendar size={18} className="text-slate-400" />
-                            {selectedYear}年{selectedMonth}月
+                            {yearOnly ? `${selectedYear}年 (整年)` : `${selectedYear}年${selectedMonth}月`}
                         </h3>
                         {loading ? (
                             <div className="animate-pulse space-y-3">
@@ -341,7 +367,9 @@ export default function HistoryPage() {
                                 ))}
                             </div>
                         ) : totalCount === 0 ? (
-                            <p className="text-slate-400 text-sm py-8 text-center">本月暂无更换记录</p>
+                            <p className="text-slate-400 text-sm py-8 text-center">
+                                {yearOnly ? '本年暂无更换记录' : '本月暂无更换记录'}
+                            </p>
                         ) : (
                             <div className="space-y-4">
                                 <div className="text-center p-4 bg-blue-50 rounded-lg">

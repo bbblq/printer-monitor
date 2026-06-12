@@ -18,6 +18,12 @@ export async function GET(request: Request) {
         const endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
         dateFilter = 'WHERE COALESCE(h.replaced_at, h.recorded_at) >= ? AND COALESCE(h.replaced_at, h.recorded_at) < ?';
         params.push(startDate, endDate);
+    } else if (year) {
+        // Filter by whole year
+        const startDate = `${year}-01-01`;
+        const endDate = `${parseInt(year) + 1}-01-01`;
+        dateFilter = 'WHERE COALESCE(h.replaced_at, h.recorded_at) >= ? AND COALESCE(h.replaced_at, h.recorded_at) < ?';
+        params.push(startDate, endDate);
     }
 
     // Get all replacement history with printer info
