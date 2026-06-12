@@ -132,11 +132,13 @@ export async function GET(request: Request) {
 
         const buffer = await workbook.xlsx.writeBuffer();
         const fileName = buildFileName(year, month);
+        const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_');
+        const encodedName = encodeURIComponent(fileName);
 
         return new NextResponse(buffer, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition': `attachment; filename="${fileName}"`,
+                'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`,
             }
         });
     } catch (error: unknown) {
