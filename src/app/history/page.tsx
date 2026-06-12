@@ -85,8 +85,13 @@ export default function HistoryPage() {
                 ? `/api/history/export-excel?year=${selectedYear}`
                 : `/api/history/export-excel?year=${selectedYear}&month=${selectedMonth}`;
             const res = await fetch(url);
-            if (!res.ok) throw new Error('导出失败');
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+            }
             const blob = await res.blob();
+            if (blob.size === 0) throw new Error('下载文件为空');
+
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
