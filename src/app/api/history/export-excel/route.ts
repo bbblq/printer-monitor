@@ -82,9 +82,9 @@ export async function GET(request: Request) {
         sheet.getRow(1).height = 24;
 
         history.forEach((row, idx) => {
-            const percent = row.max_capacity > 0
-                ? Math.round((row.level / row.max_capacity) * 100)
-                : 0;
+            const maxCap = row.max_capacity || 0;
+            const lv = row.level || 0;
+            const percent = maxCap > 0 ? Math.round((lv / maxCap) * 100) : 0;
             const replacedAt = row.replaced_at || row.recorded_at || '';
             const source = row.source === 'auto' ? '自动' : '手动';
             const colorName = normalizeColorName(row.color);
@@ -98,8 +98,8 @@ export async function GET(request: Request) {
                 model: row.model || '',
                 printer_ip: row.printer_ip || '',
                 color: colorName,
-                level: row.level,
-                max_capacity: row.max_capacity,
+                level: lv,
+                max_capacity: maxCap,
                 percent: `${percent}%`,
                 source,
                 remark: row.remark || ''
@@ -180,7 +180,8 @@ function formatExcelDate(value: string): string {
     }
 }
 
-function normalizeColorName(name: string): string {
+function normalizeColorName(name: string | null | undefined): string {
+    if (!name) return '未知';
     const lower = name.toLowerCase();
     if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '黑色';
     if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '青色';
@@ -190,7 +191,8 @@ function normalizeColorName(name: string): string {
     return name;
 }
 
-function colorBgMap(name: string): string | null {
+function colorBgMap(name: string | null | undefined): string | null {
+    if (!name) return null;
     const lower = name.toLowerCase();
     if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return 'FF1E293B';
     if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return 'FF06B6D4';
