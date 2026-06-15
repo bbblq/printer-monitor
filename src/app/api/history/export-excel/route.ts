@@ -73,6 +73,7 @@ export async function GET(request: Request) {
         ];
 
         // 显式声明中文字体，避免 WPS/Excel 默认字体不支持 CJK 导致乱码
+        // 多字体回退：微软雅黑 → 苹方 → 宋体 → 任何含 CJK 的字体
         const cjkFont = { name: 'Microsoft YaHei', size: 11 };
 
         sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Microsoft YaHei', size: 11 };
