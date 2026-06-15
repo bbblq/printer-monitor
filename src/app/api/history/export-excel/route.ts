@@ -72,7 +72,10 @@ export async function GET(request: Request) {
             { header: '备注', key: 'remark', width: 30 },
         ];
 
-        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        // 显式声明中文字体，避免 WPS/Excel 默认字体不支持 CJK 导致乱码
+        const cjkFont = { name: 'Microsoft YaHei', size: 11 };
+
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Microsoft YaHei', size: 11 };
         sheet.getRow(1).fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -108,6 +111,7 @@ export async function GET(request: Request) {
 
         sheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
+            row.font = cjkFont;
             row.alignment = { vertical: 'middle' };
             row.getCell('source').alignment = { vertical: 'middle', horizontal: 'center' };
             row.getCell('percent').alignment = { vertical: 'middle', horizontal: 'center' };
@@ -117,7 +121,7 @@ export async function GET(request: Request) {
             const bg = colorBgMap(row.color);
             if (bg) {
                 colorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-                colorCell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                colorCell.font = { ...cjkFont, color: { argb: 'FFFFFFFF' }, bold: true };
             }
 
             if (rowNumber % 2 === 0) {
