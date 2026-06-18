@@ -10,6 +10,7 @@ function getDb(): Database.Database {
   if (!dbInstance) {
     dbInstance = new Database(dbPath);
     dbInstance.pragma('journal_mode = WAL');
+    dbInstance.pragma('busy_timeout = 5000');
   }
   return dbInstance;
 }
