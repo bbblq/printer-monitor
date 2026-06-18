@@ -17,5 +17,7 @@ export function initializeApp() {
     console.log('[App Init] Initialization complete');
 }
 
-// Auto-run initialization when imported
-initializeApp();
+// Auto-run initialization when imported (skip during Next.js build phase)
+if (process.env.NEXT_PHASE !== 'phase-production-build') {
+    initializeApp();
+}
