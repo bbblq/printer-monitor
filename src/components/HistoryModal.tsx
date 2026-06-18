@@ -311,20 +311,20 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
 function getColor(name: string) {
     const lower = name.toLowerCase();
     // Check Black first because 'black' contains 'c' which might false trigger cyan if checked loosely
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '#1e293b';
-    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '#06b6d4';
-    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '#d946ef';
-    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '#eab308';
-    if (lower.includes('waste')) return '#9ca3af';
+    if (lower.includes('black') || lower.includes('黑')) return '#1e293b';
+    if (lower.includes('cyan') || lower.includes('青')) return '#06b6d4';
+    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '#d946ef';
+    if (lower.includes('yellow') || lower.includes('黄')) return '#eab308';
+    if (lower.includes('waste') || lower.includes('废粉')) return '#9ca3af';
     return '#64748b';
 }
 
 function getColorName(name: string) {
     const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '青色';
-    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '黄色';
-    if (lower.includes('waste')) return '废粉盒';
+    if (lower.includes('black') || lower.includes('黑')) return '黑色';
+    if (lower.includes('cyan') || lower.includes('青')) return '青色';
+    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
+    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
+    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
     return name; // Fallback
 }

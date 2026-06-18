@@ -190,21 +190,21 @@ function formatExcelDate(value: string): string {
 function normalizeColorName(name: string | null | undefined): string {
     if (!name) return '未知';
     const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return '青色';
-    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return '黄色';
-    if (lower.includes('waste')) return '废粉盒';
+    if (lower.includes('black') || lower.includes('黑')) return '黑色';
+    if (lower.includes('cyan') || lower.includes('青')) return '青色';
+    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
+    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
+    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
     return name;
 }
 
 function colorBgMap(name: string | null | undefined): string | null {
     if (!name) return null;
     const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑') || lower.includes('k')) return 'FF1E293B';
-    if (lower.includes('cyan') || lower.includes('青') || (lower.includes('c') && !lower.includes('black'))) return 'FF06B6D4';
-    if (lower.includes('magenta') || lower.includes('品') || lower.includes('m')) return 'FFD946EF';
-    if (lower.includes('yellow') || lower.includes('黄') || lower.includes('y')) return 'FFEAB308';
-    if (lower.includes('waste')) return 'FF9CA3AF';
+    if (lower.includes('black') || lower.includes('黑')) return 'FF1E293B';
+    if (lower.includes('cyan') || lower.includes('青')) return 'FF06B6D4';
+    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return 'FFD946EF';
+    if (lower.includes('yellow') || lower.includes('黄')) return 'FFEAB308';
+    if (lower.includes('waste') || lower.includes('废粉')) return 'FF9CA3AF';
     return null;
 }
