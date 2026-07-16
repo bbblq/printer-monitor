@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, History, Droplet, User, Save, Plus, Calendar } from 'lucide-react';
 import { Printer } from '@/lib/types';
+import { getColorHex, normalizeColorName } from '@/lib/color';
 
 interface HistoryRecord {
     id: number;
@@ -261,11 +262,11 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
                                 <div key={record.id} className="relative group flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg bg-white border border-slate-200 hover:border-blue-200 hover:shadow-sm transition-all">
                                     <div className="flex items-center gap-4 flex-1">
                                         <div className="p-3 rounded-full bg-slate-50 border border-slate-100 flex-shrink-0">
-                                            <Droplet size={20} style={{ color: getColor(record.color) }} />
+                                            <Droplet size={20} style={{ color: getColorHex(record.color) }} />
                                         </div>
                                         <div>
                                             <div className="font-bold text-slate-800 flex items-center gap-2">
-                                                {getColorName(record.color)}
+                                                {normalizeColorName(record.color)}
                                                 {record.source === 'manual' && (
                                                     <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-wide font-bold">手动</span>
                                                 )}
@@ -306,25 +307,4 @@ export function HistoryModal({ printer, onClose, readOnly = false }: HistoryModa
             </div>
         </div>
     );
-}
-
-function getColor(name: string) {
-    const lower = name.toLowerCase();
-    // Check Black first because 'black' contains 'c' which might false trigger cyan if checked loosely
-    if (lower.includes('black') || lower.includes('黑')) return '#1e293b';
-    if (lower.includes('cyan') || lower.includes('青')) return '#06b6d4';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '#d946ef';
-    if (lower.includes('yellow') || lower.includes('黄')) return '#eab308';
-    if (lower.includes('waste') || lower.includes('废粉')) return '#9ca3af';
-    return '#64748b';
-}
-
-function getColorName(name: string) {
-    const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青')) return '青色';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
-    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
-    return name; // Fallback
 }

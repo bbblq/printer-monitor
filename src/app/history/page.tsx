@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Monitor, History, ChevronLeft, ChevronRight, Droplet, Printer, Calendar, ArrowLeft, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { getColorHex, normalizeColorName } from '@/lib/color';
 
 interface HistoryRecord {
     id: number;
@@ -126,7 +127,7 @@ export default function HistoryPage() {
 
     // Group by color
     const byColor = history.reduce((acc, record) => {
-        const key = getColorName(record.color);
+        const key = normalizeColorName(record.color);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
@@ -377,7 +378,7 @@ export default function HistoryPage() {
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className="w-3 h-3 rounded-full"
-                                                style={{ backgroundColor: getColor(color) }}
+                                                style={{ backgroundColor: getColorHex(color) }}
                                             ></div>
                                             <span className="font-medium text-slate-800">{color}</span>
                                         </div>
@@ -477,9 +478,9 @@ export default function HistoryPage() {
                                                 <div className="flex items-center gap-2">
                                                     <div
                                                         className="w-2.5 h-2.5 rounded-full"
-                                                        style={{ backgroundColor: getColor(record.color) }}
+                                                        style={{ backgroundColor: getColorHex(record.color) }}
                                                     ></div>
-                                                    <span className="text-sm font-medium text-slate-700">{getColorName(record.color)}</span>
+                                                    <span className="text-sm font-medium text-slate-700">{normalizeColorName(record.color)}</span>
                                                 </div>
                                             </td>
                                             <td className="py-3">
@@ -536,24 +537,4 @@ function getRecordPrinterMeta(record: HistoryRecord) {
     if (location && location !== getRecordPrinterName(record)) return location;
     if (record.printer_ip?.trim()) return record.printer_ip.trim();
     return '无位置信息';
-}
-
-function getColor(name: string) {
-    const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑')) return '#1e293b';
-    if (lower.includes('cyan') || lower.includes('青')) return '#06b6d4';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '#d946ef';
-    if (lower.includes('yellow') || lower.includes('黄')) return '#eab308';
-    if (lower.includes('waste') || lower.includes('废粉')) return '#9ca3af';
-    return '#64748b';
-}
-
-function getColorName(name: string) {
-    const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青')) return '青色';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
-    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
-    return name;
 }

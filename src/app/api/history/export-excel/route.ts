@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { NextResponse } from 'next/server';
+import { normalizeColorName } from '@/lib/color';
 import db from '@/lib/db';
 import { printerDisplayNameSql } from '@/lib/printerName';
 
@@ -36,8 +37,6 @@ export async function GET(request: Request) {
                 p.model,
                 p.location,
                 h.color,
-                h.level,
-                h.max_capacity,
                 h.source,
                 h.remark,
                 h.replaced_at,
@@ -65,9 +64,6 @@ export async function GET(request: Request) {
             { header: '型号', key: 'model', width: 22 },
             { header: 'IP 地址', key: 'printer_ip', width: 16 },
             { header: '颜色', key: 'color', width: 14 },
-            { header: '当前余量', key: 'level', width: 12 },
-            { header: '满量', key: 'max_capacity', width: 10 },
-            { header: '百分比', key: 'percent', width: 10 },
             { header: '类型', key: 'source', width: 10 },
             { header: '备注', key: 'remark', width: 30 },
         ];
@@ -86,9 +82,6 @@ export async function GET(request: Request) {
         sheet.getRow(1).height = 24;
 
         history.forEach((row, idx) => {
-            const maxCap = row.max_capacity || 0;
-            const lv = row.level || 0;
-            const percent = maxCap > 0 ? Math.round((lv / maxCap) * 100) : 0;
             const replacedAt = row.replaced_at || row.recorded_at || '';
             const source = row.source === 'auto' ? '自动' : '手动';
             const colorName = normalizeColorName(row.color);
@@ -102,9 +95,6 @@ export async function GET(request: Request) {
                 model: row.model || '',
                 printer_ip: row.printer_ip || '',
                 color: colorName,
-                level: lv,
-                max_capacity: maxCap,
-                percent: `${percent}%`,
                 source,
                 remark: row.remark || ''
             });
@@ -115,11 +105,10 @@ export async function GET(request: Request) {
             row.font = cjkFont;
             row.alignment = { vertical: 'middle' };
             row.getCell('source').alignment = { vertical: 'middle', horizontal: 'center' };
-            row.getCell('percent').alignment = { vertical: 'middle', horizontal: 'center' };
             row.getCell('index').alignment = { vertical: 'middle', horizontal: 'center' };
 
             const colorCell = row.getCell('color');
-            const bg = colorBgMap(row.color);
+            const bg = colorBgMap(typeof colorCell.value === 'string' ? colorCell.value : null);
             if (bg) {
                 colorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
                 colorCell.font = { ...cjkFont, color: { argb: 'FFFFFFFF' }, bold: true };
@@ -187,24 +176,14 @@ function formatExcelDate(value: string): string {
     }
 }
 
-function normalizeColorName(name: string | null | undefined): string {
-    if (!name) return '未知';
-    const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青')) return '青色';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
-    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
-    return name;
-}
-
 function colorBgMap(name: string | null | undefined): string | null {
     if (!name) return null;
-    const lower = name.toLowerCase();
+    const normalized = normalizeColorName(name);
+    const lower = normalized.toLowerCase();
     if (lower.includes('black') || lower.includes('黑')) return 'FF1E293B';
     if (lower.includes('cyan') || lower.includes('青')) return 'FF06B6D4';
     if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return 'FFD946EF';
     if (lower.includes('yellow') || lower.includes('黄')) return 'FFEAB308';
-    if (lower.includes('waste') || lower.includes('废粉')) return 'FF9CA3AF';
+    if (normalized === '废粉盒') return 'FF9CA3AF';
     return null;
 }

@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, Cpu, User, History, Save, Calendar } from 'lucide-react';
+import { getColorHex, normalizeColorName } from '@/lib/color';
 
 interface Printer {
     id: number;
@@ -213,7 +214,7 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
                                                 className="w-3 h-3 rounded-full border border-slate-200"
                                                 style={{ backgroundColor: getColorHex(record.color) }}
                                             />
-                                            {getColorName(record.color)}
+                                            {normalizeColorName(record.color)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {record.source === 'auto' ? (
@@ -333,25 +334,4 @@ export default function HistoryManagementPage({ params }: { params: Promise<{ id
             )}
         </div>
     );
-}
-
-function getColorHex(name: string) {
-    const lower = name.toLowerCase();
-    // Check Black first because 'black' contains 'c' which might false trigger cyan if checked loosely
-    if (lower.includes('black') || lower.includes('黑')) return '#1e293b';
-    if (lower.includes('cyan') || lower.includes('青')) return '#06b6d4';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '#d946ef';
-    if (lower.includes('yellow') || lower.includes('黄')) return '#eab308';
-    if (lower.includes('waste') || lower.includes('废粉')) return '#9ca3af';
-    return '#64748b';
-}
-
-function getColorName(name: string) {
-    const lower = name.toLowerCase();
-    if (lower.includes('black') || lower.includes('黑')) return '黑色';
-    if (lower.includes('cyan') || lower.includes('青')) return '青色';
-    if (lower.includes('magenta') || lower.includes('品红') || lower.includes('洋红')) return '品红';
-    if (lower.includes('yellow') || lower.includes('黄')) return '黄色';
-    if (lower.includes('waste') || lower.includes('废粉')) return '废粉盒';
-    return name; // Fallback
 }
