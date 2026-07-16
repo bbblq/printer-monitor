@@ -1,4 +1,5 @@
 import db from './db';
+import { normalizeColorName } from './color';
 import { printerDisplayNameSql } from './printerName';
 import {
     formatBeijingDate,
@@ -126,8 +127,12 @@ export function generateDailyReport(): string {
 
     const monthReplacements = getReplacementsByMonth();
 
-    // 耗材不足（低于10%）
-    const lowSupplies = supplies.filter(s => s.percent > 0 && s.percent <= 10);
+    // 耗材不足或耗尽（10%及以下）。废粉盒的 0% 表示空盒，不属于耗材耗尽。
+    const lowSupplies = supplies.filter(s =>
+        normalizeColorName(s.color) !== '废粉盒' &&
+        s.percent >= 0 &&
+        s.percent <= 10
+    );
 
     // 打印机状态统计
     const onlinePrinters = printers.filter(p => p.is_online === 1);
@@ -154,14 +159,15 @@ export function generateDailyReport(): string {
         }
     }
 
-    report += `\n**🔸 耗材不足 (<10%)**\n`;
+    report += `\n**🔸 耗材不足/耗尽 (≤10%)**\n`;
     if (lowSupplies.length === 0) {
         report += `(全部正常)\n`;
     } else {
         for (const s of lowSupplies) {
             const printer = printers.find(p => p.id === s.printer_id);
             const emoji = s.percent <= 5 ? '🔴' : '🟡';
-            report += `${emoji} ${printer ? formatPrinterLabel(printer) : '未知打印机'} ${s.color} **${s.percent}%**\n`;
+            const status = s.percent === 0 ? '**已耗尽 (0%)**' : `**${s.percent}%**`;
+            report += `${emoji} ${printer ? formatPrinterLabel(printer) : '未知打印机'} ${s.color} ${status}\n`;
         }
     }
 

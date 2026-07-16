@@ -169,7 +169,7 @@ export function FeishuSettings() {
                         />
                         <label htmlFor="notify_low" className="text-sm text-slate-700 flex items-center gap-2">
                             <Bell size={16} className="text-orange-500" />
-                            低墨/耗尽预警 (小于 10% 或 耗尽)
+                            低墨/耗尽预警（10% 及以下）
                         </label>
                     </div>
 
