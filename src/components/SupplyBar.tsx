@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface SupplyBarProps {
     colorName: string;
@@ -24,8 +24,8 @@ export function SupplyBar({ colorName, level, max, percent, type, isBinary, prin
     // 2. 特定的 Ricoh 型号 (无法读取准确数值的型号)
     const isStatusOnlyModel = model.includes('2014') || model.includes('3054') || model.includes('6300');
 
-    // 最终判定：如果是 LBP 或者 (是特定型号 且 是耗材 且 数值为100/0)
-    const isBinaryCartridge = isLBP || (
+    // 优先采用 SNMP 解析层的判定；型号判断仅用于兼容已有数据。
+    const isBinaryCartridge = Boolean(isBinary) || isLBP || (
         isStatusOnlyModel &&
         (lowerName.includes('cartridge') || lowerName.includes('toner') || lowerName.includes('碳粉')) &&
         (percent === 100 || percent === 0)

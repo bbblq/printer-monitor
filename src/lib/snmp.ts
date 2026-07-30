@@ -182,8 +182,12 @@ export async function fetchPrinterStatus(ip: string): Promise<PrinterSNMPData> {
                                 type = 'toner';
                             }
 
-                            // 如果原始level为-3，标记为二元状态
-                            const isBinary = originalLevel === -3;
+                            // 部分 Ricoh 机型只上报有粉/耗尽：有粉为 -3，耗尽为 0。
+                            // 统一在解析层标记，避免依赖前端硬编码具体型号。
+                            const isRicoh = rule?.brand?.toLowerCase() === 'ricoh';
+                            const isBinary = originalLevel === -3 || (
+                                isRicoh && type === 'toner' && originalLevel === 0 && max > 0
+                            );
                             result.supplies.push({ color: desc, level, max, percent, type, isBinary });
                         }
                     }

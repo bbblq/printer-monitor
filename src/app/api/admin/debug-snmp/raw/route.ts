@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import snmp from 'net-snmp';
 
 export async function GET(request: Request) {
@@ -12,8 +12,8 @@ export async function GET(request: Request) {
     const result = {
         ip,
         sysDescr: '',
-        raw: {} as Record<string, string>,
-        rows: [] as Array<{ index: string; desc: string; level: string; max: string }>,
+        raw: {} as Record<string, unknown>,
+        rows: [] as Array<{ index: string; desc: string; level: string | number; max: string | number }>,
     };
 
     try {
@@ -61,8 +61,8 @@ export async function GET(request: Request) {
                             result.rows.push({
                                 index: idx,
                                 desc: row.desc || '-',
-                                level: row.level || '-',
-                                max: row.max || '-',
+                                level: row.level === '' || row.level == null ? '-' : row.level,
+                                max: row.max === '' || row.max == null ? '-' : row.max,
                             });
                         }
                     }

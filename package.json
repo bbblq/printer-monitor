@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node tests/snmp.test.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.0",
