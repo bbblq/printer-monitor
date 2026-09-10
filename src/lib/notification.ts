@@ -2,6 +2,8 @@
 import db from './db';
 import { formatBeijingDateTime } from './time';
 
+// ==================== 飞书 ====================
+
 interface FeishuConfig {
     webhookUrl: string;
     enabled: boolean;
@@ -36,7 +38,7 @@ export async function sendFeishuCard(title: string, markdownContent: string, col
         return false;
     }
 
-const timeStr = formatBeijingDateTime();
+    const timeStr = formatBeijingDateTime();
 
     const elements: any[] = [
         {
@@ -96,6 +98,75 @@ const timeStr = formatBeijingDateTime();
         return true;
     } catch (e) {
         console.error('[Feishu] Exception:', e);
+        return false;
+    }
+}
+
+// ==================== 企业微信 ====================
+
+interface WecomConfig {
+    webhookUrl: string;
+    enabled: boolean;
+    notifyLow: boolean;
+    notifyReplacement: boolean;
+    notifyDaily: boolean;
+    dailyTime: string;
+    footerUrl: string;
+}
+
+export function getWecomConfig(): WecomConfig {
+    const settings = db.prepare("SELECT key, value FROM settings WHERE key LIKE 'wecom_%'").all() as { key: string, value: string }[];
+    const config: any = {};
+    for (const s of settings) {
+        config[s.key] = s.value;
+    }
+    return {
+        webhookUrl: config.wecom_webhook_url || '',
+        enabled: config.wecom_enabled === '1',
+        notifyLow: config.wecom_notify_low !== '0',
+        notifyReplacement: config.wecom_notify_replacement !== '0',
+        notifyDaily: config.wecom_notify_daily === '1',
+        dailyTime: config.wecom_daily_time || '09:00',
+        footerUrl: config.wecom_footer_url || ''
+    };
+}
+
+export async function sendWecomMessage(title: string, markdownContent: string) {
+    const config = getWecomConfig();
+    if (!config.enabled || !config.webhookUrl) {
+        console.log('[Wecom] Disabled or no webhook URL');
+        return false;
+    }
+
+    const timeStr = formatBeijingDateTime();
+
+    let content = `### ${title}\n${markdownContent}\n> 时间: ${timeStr}`;
+
+    if (config.footerUrl) {
+        content += `\n> [🔗 查看详情](${config.footerUrl})`;
+    }
+
+    const payload = {
+        msgtype: 'markdown',
+        markdown: {
+            content
+        }
+    };
+
+    try {
+        const res = await fetch(config.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.errcode !== 0) {
+            console.error('[Wecom] Error:', result);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error('[Wecom] Exception:', e);
         return false;
     }
 }

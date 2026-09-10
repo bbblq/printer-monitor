@@ -8,6 +8,7 @@ import { AddPrinterModal } from '@/components/AddPrinterModal';
 import { EditPrinterModal } from '@/components/EditPrinterModal'; // Import Edit Modal
 import { SystemSettings } from '@/components/SystemSettings';
 import { FeishuSettings } from '@/components/FeishuSettings';
+import { WecomSettings } from '@/components/WecomSettings';
 import { Printer } from '@/lib/types';
 
 export default function AdminDashboard() {
@@ -345,6 +346,10 @@ export default function AdminDashboard() {
 
                 <div className="mt-12">
                     <FeishuSettings />
+                </div>
+
+                <div className="mt-12">
+                    <WecomSettings />
                 </div>
 
                 <AddPrinterModal

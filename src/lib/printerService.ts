@@ -1,6 +1,6 @@
 import db from './db';
 import { fetchPrinterStatus } from './snmp';
-import { sendFeishuCard, getFeishuConfig } from './notification';
+import { sendFeishuCard, getFeishuConfig, sendWecomMessage, getWecomConfig } from './notification';
 import { getPrinterDisplayName } from './printerName';
 
 
@@ -154,6 +154,7 @@ export async function refreshAllPrinters() {
     const printers = (db.prepare('SELECT * FROM printers').all() as Printer[])
         .map(printer => ({ ...printer, name: getPrinterDisplayName(printer) }));
     const feishu = getFeishuConfig();
+    const wecom = getWecomConfig();
 
     const refreshPrinter = async (p: Printer) => {
         try {
@@ -207,21 +208,40 @@ export async function refreshAllPrinters() {
                                     const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color}\n**变化**: ${oldPercent.toFixed(0)}% ➔ ${newPercent.toFixed(0)}%`;
                                     sendFeishuCard(title, content, 'green').catch(console.error);
                                 }
+                                if (wecom.enabled && wecom.notifyReplacement) {
+                                    const title = `🟢 耗材已更换 - ${p.name}`;
+                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color}\n**变化**: ${oldPercent.toFixed(0)}% ➔ ${newPercent.toFixed(0)}%`;
+                                    sendWecomMessage(title, content).catch(console.error);
+                                }
                             }
 
                             // 2. 低墨预警 (状态变化检测)
-                            if (feishu.enabled && feishu.notifyLow && (supply.type === 'toner' || supply.type === 'other')) {
+                            if (supply.type === 'toner' || supply.type === 'other') {
                                 // 变为耗尽 (0%)
                                 if (percent === 0 && oldPercent > 0) {
-                                    const title = `🔴 耗材耗尽 - ${p.name}`;
-                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 已耗尽，请及时更换！`;
-                                    sendFeishuCard(title, content, 'red').catch(console.error);
+                                    if (feishu.enabled && feishu.notifyLow) {
+                                        const title = `🔴 耗材耗尽 - ${p.name}`;
+                                        const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 已耗尽，请及时更换！`;
+                                        sendFeishuCard(title, content, 'red').catch(console.error);
+                                    }
+                                    if (wecom.enabled && wecom.notifyLow) {
+                                        const title = `🔴 耗材耗尽 - ${p.name}`;
+                                        const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 已耗尽，请及时更换！`;
+                                        sendWecomMessage(title, content).catch(console.error);
+                                    }
                                 }
                                 // 低于 10% (且之前大于 10%)
                                 else if (percent <= 10 && percent > 0 && oldPercent > 10) {
-                                    const title = `🟠 耗材不足 - ${p.name}`;
-                                    const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 剩余 **${Math.round(percent)}%**，请准备更换。`;
-                                    sendFeishuCard(title, content, 'orange').catch(console.error);
+                                    if (feishu.enabled && feishu.notifyLow) {
+                                        const title = `🟠 耗材不足 - ${p.name}`;
+                                        const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 剩余 **${Math.round(percent)}%**，请准备更换。`;
+                                        sendFeishuCard(title, content, 'orange').catch(console.error);
+                                    }
+                                    if (wecom.enabled && wecom.notifyLow) {
+                                        const title = `🟠 耗材不足 - ${p.name}`;
+                                        const content = `**打印机**: ${p.name}\n**位置**: ${p.location}\n**耗材**: ${supply.color} 剩余 **${Math.round(percent)}%**，请准备更换。`;
+                                        sendWecomMessage(title, content).catch(console.error);
+                                    }
                                 }
                             }
                         }
